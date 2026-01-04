@@ -1,0 +1,121 @@
+﻿
+@model Login
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NeoBank — Giriş</title>
+    <link rel="stylesheet" href="~/assets/styles.css" />
+</head>
+<body>
+    <!-- Background -->
+    <div class="bg">
+        <div class="bg__blob bg__blob--1"></div>
+        <div class="bg__blob bg__blob--2"></div>
+        <div class="bg__grid"></div>
+    </div>
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="topbar__left">
+            <div class="logo">
+                <span class="logo__mark">N</span>
+                <span class="logo__text">NeoBank</span>
+            </div>
+            <span class="badge">Demo</span>
+        </div>
+    </header>
+
+    <main class="shell">
+        <!-- AUTH - LOGIN -->
+        <section class="auth" id="authView">
+            <div class="auth__card card">
+                <div class="card__header">
+                    <h1 class="h1">NeoBank-a xoş gəldiniz</h1>
+                    <p class="muted">Hesabınıza daxil olun</p>
+                </div>
+
+                @* 1. Sənin Controller-dən göndərdiyin xüsusi xətalar *@
+                @if (ViewBag.Error != null)
+                {
+                    <div style="padding: 1rem; background: #ef4444; color: white; border-radius: 8px; margin-bottom: 1rem;">
+                        @ViewBag.Error
+                    </div>
+                }
+
+                @* 2. Identity tərəfindən gələn bütün ModelState xətaları (Məs: Email formatı səhvdir) *@
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div style="padding: 1rem; background: #facc15; color: #000; border-radius: 8px; margin-bottom: 1rem;">
+                        <div asp-validation-summary="All" class="text-danger" style="list-style:none; padding:0; margin:0; font-size: 0.9rem;"></div>
+                    </div>
+                }
+
+                @* 3. Success mesajı *@
+                @if (TempData["Success"] != null)
+                {
+                    <div style="padding: 1rem; background: #10b981; color: white; border-radius: 8px; margin-bottom: 1rem;">
+                        @TempData["Success"]
+                    </div>
+                }
+
+                <!-- TAB Header (Fəqət görüntü üçün, klikləmə ilə keçid deyil) -->
+                <div class="tabs" role="tablist">
+                    <button class="tab is-active" type="button">Login</button>
+                    <a asp-action="Register" asp-controller="Account" class="tab" style="text-decoration: none; cursor: pointer;">Register</a>
+                </div>
+
+                <!-- Login Form -->
+                <form asp-action="Login" asp-controller="Account" method="post" class="form">
+                    <div class="grid2">
+                        <label class="field">
+                            <span class="field__label">Email</span>
+                            <input asp-for="Email" class="input" type="email" placeholder="example@mail.com" required/>
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </label>
+
+                        <label class="field">
+                            <span class="field__label">Şifrə</span>
+                            <input asp-for="Password" class="input" type="password" placeholder="••••••••" required />
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                        </label>
+                    </div>
+
+                    <div class="form__row">
+                        
+                        <button class="btn btn--primary" type="submit">Daxil ol</button>
+                    </div>
+
+                    <div class="hint">
+                        <span class="muted">Demo üçün:</span>
+                        <code>user@neobank.az / User123!</code>
+                    </div>
+                </form>
+
+                <!-- Register Link -->
+                <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <p class="muted">
+                        Hesabınız yoxdur?
+                        <a asp-action="Register" asp-controller="Account" style="color: var(--primary, #3b82f6); text-decoration: none; font-weight: 600;">
+                            Qeydiyyatdan keçin →
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <span class="muted small">NeoBank Demo — MVC • 2025</span>
+    </footer>
+
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+</body>
+</html>

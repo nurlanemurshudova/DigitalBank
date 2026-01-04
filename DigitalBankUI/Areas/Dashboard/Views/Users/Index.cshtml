@@ -1,0 +1,133 @@
+﻿@model List<ApplicationUser>
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "İstifadəçilər";
+    var currentUser = await UserManager.GetUserAsync(User);
+}
+
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">👥 İstifadəçilər</h1>
+        <a asp-area="Dashboard" asp-controller="Home" asp-action="Index" class="btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> Geri
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Avatar</th>
+                            <th>Ad Soyad</th>
+                            <th>Email</th>
+                            <th>Hesab Nömrəsi</th>
+                            <th>Balans</th>
+                            <th>Qeydiyyat</th>
+                            <th>Əməliyyat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model)
+                        {
+                            <tr>
+                                <td>@user.Id</td>
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(user.AvatarUrl))
+                                    {
+                                        <img src="@user.AvatarUrl" style="width:40px; height:40px; border-radius:50%; object-fit:cover;" alt="Avatar" />
+                                    }
+                                    else
+                                    {
+                                        <div style="width:40px; height:40px; border-radius:50%; background:#e3e6f0; display:flex; align-items:center; justify-content:center; margin:auto; font-weight:bold; color:#858796;">
+                                            @(user.FirstName?[0])@(user.LastName?[0])
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    <strong>@user.FirstName @user.LastName</strong>
+                                    @if (user.Age.HasValue)
+                                    {
+                                        <div class="small text-muted">@user.Age yaş</div>
+                                    }
+                                </td>
+                                <td>@user.Email</td>
+                                <td><code>@user.AccountNumber</code></td>
+                                <td>
+                                    <span class="badge badge-success" style="font-size: 0.9rem;">
+                                        @user.Balance.ToString("N2") AZN
+                                    </span>
+                                </td>
+                                <td>@user.RegisterDate.ToString("dd.MM.yyyy")</td>
+                                <td class="text-center">
+                                    @if (user.Id != currentUser?.Id)
+                                    {
+                                        @* Appointment-dəki kimi atributlar istifadə olunur *@
+                                        <a item-value="@user.Id" item-title="@user.FirstName @user.LastName" class="btnDelete text-danger" style="cursor:pointer;">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-light">Siz</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Appointment-dəki eyni məntiq və ID götürmə üsulu
+        $(".btnDelete").click(function (e) {
+            Swal.fire({
+                title: 'Əminsən?',
+                text: "İstifadəçi silinəcək və bu geri döndərə bilməyəcəksiz!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonText: "Ləğv et",
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Bəli, sil'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Appointment-dəki kimi atribut sırası ilə ID və Title götürülür
+                    let itemId = e.currentTarget.attributes[0].value;
+                    let itemTitle = e.currentTarget.attributes[1].value;
+
+                    $.ajax({
+                        method: "POST",
+                        url: "/Dashboard/Users/Delete", 
+                        data: {
+                            id: itemId
+                        },
+                        success: function (response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    title: 'Silindi!',
+                                    text: "'" + itemTitle + "' uğurla silindi",
+                                    icon: 'success',
+                                }).then(() => {
+                                    location.reload(); // Səhifəni yeniləyir
+                                });
+                            } else {
+                                Swal.fire('Xəta!', response.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            Swal.fire('Xəta!', 'Serverlə əlaqə kəsildi', 'error');
+                        }
+                    });
+                }
+            })
+        })
+    </script>
+}

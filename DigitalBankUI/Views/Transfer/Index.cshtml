@@ -1,0 +1,168 @@
+﻿@{
+    ViewData["Title"] = "Pul Köçürmə";
+}
+
+<section class="app">
+    <aside class="sidebar card">
+        <div class="sidebar__head">
+            <h2 class="h2">Panel</h2>
+            <p class="muted small">@DateTime.Now.ToString("dd MMM yyyy")</p>
+        </div>
+
+        <nav class="nav">
+            <a asp-controller="Home" asp-action="Index" class="nav__item">
+
+                <span>🏦</span> <span>Hesab</span>
+
+            </a>
+
+            <a asp-controller="Transfer" asp-action="Index" class="nav__item is-active">
+
+                <span>💸</span> <span>Köçürmə</span>
+
+            </a>
+
+            <a asp-controller="Chat" asp-action="Index" class="nav__item">
+
+                <span>💬</span> <span>Chat</span>
+
+            </a>
+
+            <a asp-controller="Settings" asp-action="Index" class="nav__item">
+
+                <span>⚙️</span> <span>Ayarlar</span>
+
+            </a>
+            <a asp-controller="Transfer" asp-action="History" class="nav__item">
+                <span>⚙️</span> <span>Tarixce</span>
+            </a>
+        </nav>
+
+        <div class="sidebar__foot">
+            <div class="mini">
+                <div class="mini__label">Sizin hesab nömrəniz</div>
+                <div class="mini__value mono" style="font-size: 0.9rem;">@ViewBag.UserAccountNumber</div>
+            </div>
+            <div class="mini">
+                <div class="mini__label">Balans</div>
+                <div class="mini__value">@ViewBag.UserBalance.ToString("N2") AZN</div>
+            </div>
+        </div>
+    </aside>
+
+    <section class="content">
+        <div class="view">
+            <div class="gridB">
+                <div class="card">
+                    <div class="card__header">
+                        <h3 class="h3">Pul köçürmə</h3>
+                        <p class="muted small">Alıcının 16 rəqəmli hesab nömrəsini daxil edin</p>
+                    </div>
+
+                    @if (TempData["Success"] != null)
+                    {
+                        <div style="padding: 1rem; background: #10b981; color: white; border-radius: 8px; margin-bottom: 1rem;">
+                            ✅ @TempData["Success"]
+                        </div>
+                    }
+
+                    @if (TempData["Error"] != null)
+                    {
+                        <div style="padding: 1rem; background: #ef4444; color: white; border-radius: 8px; margin-bottom: 1rem;">
+                            ❌ @TempData["Error"]
+                        </div>
+                    }
+
+                    <form asp-controller="Transfer" asp-action="Send" method="post" class="form">
+                        <div class="grid2">
+                            <label class="field" style="grid-column: 1 / -1;">
+                                <span class="field__label">Alıcının hesab nömrəsi (16 rəqəm)</span>
+                                <input class="input mono"
+                                       type="text"
+                                       name="receiverAccountNumber"
+                                       placeholder="4200-XXXX-XXXX-XXXX"
+                                       maxlength="19"
+                                       required
+                                       style="letter-spacing: 2px;" />
+                                <small class="muted">Tire işarəli və ya tiresiz daxil edə bilərsiniz</small>
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Məbləğ (AZN)</span>
+                                <input class="input"
+                                       type="number"
+                                       name="amount"
+                                       min="0.01"
+                                       step="0.01"
+                                       placeholder="Məs: 25.50"
+                                       required />
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Qalan balans</span>
+                                <input class="input"
+                                       type="text"
+                                       value="@ViewBag.UserBalance.ToString("N2") AZN"
+                                       readonly
+                                       style="opacity: 0.6; cursor: not-allowed;" />
+                            </label>
+
+                            <label class="field" style="grid-column: 1 / -1;">
+                                <span class="field__label">Qeyd (optional)</span>
+                                <input class="input" type="text" name="note" placeholder="Məs: xidmət haqqı" />
+                            </label>
+                        </div>
+
+                        <div class="form__row">
+                            <div class="muted small">Komissiya: <b>0%</b></div>
+                            <button class="btn btn--primary" type="submit">💸 Pul göndər</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card card--glass">
+                    <div class="card__header">
+                        <h3 class="h3">Məlumat</h3>
+                    </div>
+                    <div class="tips">
+                        <div class="tip">
+                            <div class="tip__k">Sizin hesab nömrəniz</div>
+                            <div class="tip__v mono" style="font-weight: 600;">@ViewBag.UserAccountNumber</div>
+                        </div>
+                        <div class="tip">
+                            <div class="tip__k">Gündəlik limit</div>
+                            <div class="tip__v">1,000.00 AZN</div>
+                        </div>
+                        <div class="tip">
+                            <div class="tip__k">Status</div>
+                            <div class="tip__v">Köçürmələr dərhal icra olunur</div>
+                        </div>
+                        <div class="tip">
+                            <div class="tip__k">Tövsiyə</div>
+                            <div class="tip__v">Hesab nömrəsini diqqətlə yoxlayın</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</section>
+
+@section Scripts {
+    <script>
+        // Hesab nömrəsinə avtomatik tire əlavə et
+        document.querySelector('input[name="receiverAccountNumber"]').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, ''); // Yalnız rəqəmlər
+            if (value.length > 16) value = value.substring(0, 16);
+
+            // 4-4-4-4 formatında tire əlavə et
+            let formatted = '';
+            for (let i = 0; i < value.length; i++) {
+                if (i > 0 && i % 4 === 0) formatted += '-';
+                formatted += value[i];
+            }
+
+            e.target.value = formatted;
+        });
+    </script>
+}

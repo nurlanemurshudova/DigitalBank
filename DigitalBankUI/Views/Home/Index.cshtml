@@ -1,0 +1,229 @@
+﻿@model ApplicationUser
+@using Business.Utilities
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<section class="app">
+    <aside class="sidebar card">
+        <div class="sidebar__head">
+            <h2 class="h2">Panel</h2>
+            <p class="muted small">@DateTime.Now.ToString("dd MMM yyyy")</p>
+        </div>
+
+        <nav class="nav">
+            <a asp-controller="Home" asp-action="Index" class="nav__item is-active">
+                <span>🏦</span> <span>Hesab</span>
+            </a>
+            <a asp-controller="Transfer" asp-action="Index" class="nav__item">
+                <span>💸</span> <span>Köçürmə</span>
+            </a>
+            <a asp-controller="Chat" asp-action="Index" class="nav__item">
+                <span>💬</span> <span>Chat</span>
+            </a>
+            <a asp-controller="Settings" asp-action="Index" class="nav__item">
+                <span>⚙️</span> <span>Ayarlar</span>
+            </a>
+
+            <a asp-controller="Transfer" asp-action="History" class="nav__item">
+                <span>⚙️</span> <span>Tarixce</span>
+            </a>
+        </nav>
+
+        <div class="sidebar__foot">
+            <div class="mini">
+                <div class="mini__label">İstifadəçi</div>
+                <div class="mini__value">@Model.FirstName @Model.LastName</div>
+            </div>
+            <div class="mini">
+                <div class="mini__label">Balans</div>
+                <div class="mini__value" id="currentBalance">@Model.Balance.ToString("N2") AZN</div>
+            </div>
+        </div>
+    </aside>
+
+    <section class="content">
+        <div class="view">
+            <!-- REAL-TIME Notification Alert -->
+            <div id="notificationAlert" style="display: none; margin-bottom: 1rem; padding: 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3); animation: slideIn 0.3s ease;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span style="font-size: 2rem;">💰</span>
+                    <div>
+                        <strong style="font-size: 1.1rem;">Yeni pul transfer!</strong>
+                        <p id="notificationText" style="margin: 0.25rem 0 0 0; opacity: 0.9;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gridA">
+                <div class="card">
+                    <div class="card__header">
+                        <h3 class="h3">Hesab məlumatları</h3>
+                        <p class="muted small">Xoş gəldiniz, @Model.FirstName!</p>
+                    </div>
+
+                    <div class="account">
+                        <div class="account__card">
+                            <div class="account__top">
+                                <div>
+                                    <div class="muted small">Cari Balans</div>
+                                    <div class="balance">@Model.Balance.ToString("N2")</div>
+                                </div>
+                                <div class="pill">AZN</div>
+                            </div>
+
+                            <div class="account__meta">
+                                <div class="kv">
+                                    <div class="kv__k">Hesab Nömrəsi</div>
+                                    <div class="kv__v mono">@AccountNumberHelper.FormatAccountNumber(Model.AccountNumber)</div>
+                                </div>
+                                <div class="kv">
+                                    <div class="kv__k">Email</div>
+                                    <div class="kv__v">@Model.Email</div>
+                                </div>
+                            </div>
+
+                            <div class="account__actions">
+                                <a asp-controller="Transfer" asp-action="Index" class="btn btn--soft">Pul Köçür</a>
+                                <button class="btn btn--ghost" onclick="copyAccountNumber()">Kopyala</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card__header">
+                        <h3 class="h3">Son əməliyyatlar</h3>
+                        <p class="muted small">Sizin son 5 əməliyyatınız.</p>
+                    </div>
+
+                    <div class="tablewrap">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tarix</th>
+                                    <th>Məbləğ</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionTable">
+                                @{
+                                    var allTransactions = Model.SentTransactions
+                                    .Concat(Model.ReceivedTransactions)
+                                    .OrderByDescending(t => t.CreatedDate)
+                                    .Take(5);
+                                }
+
+                                @if (allTransactions.Any())
+                                {
+                                    foreach (var item in allTransactions)
+                                    {
+                                        <tr>
+                                            <td>@item.CreatedDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td style="color: @(item.SenderId == Model.Id ? "#ef4444" : "#10b981"); font-weight: 600;">
+                                                @(item.SenderId == Model.Id ? "-" : "+") @item.Amount.ToString("N2") AZN
+                                            </td>
+                                            <td><span class="badge">@item.Status</span></td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="3" class="muted">Hələ ki, əməliyyat yoxdur.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</section>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        const currentUserId = @Model.Id;
+        let notificationConnection = null;
+
+        // REAL-TIME NOTIFICATION
+        async function initNotifications() {
+            notificationConnection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/notification")
+                .withAutomaticReconnect()
+                .build();
+
+            notificationConnection.on("ReceiveNotification", (data) => {
+                console.log("💰 Notification alındı:", data);
+
+                const alert = document.getElementById('notificationAlert');
+                const text = document.getElementById('notificationText');
+                text.textContent = data.message;
+                alert.style.display = 'block';
+
+                // Balansı yenilə
+                if (data.newBalance) {
+                    document.getElementById('currentBalance').textContent = data.newBalance.toFixed(2) + ' AZN';
+                    document.querySelector('.balance').textContent = data.newBalance.toFixed(2);
+                }
+
+                // 5 saniyədən sonra gizlət
+                setTimeout(() => {
+                    alert.style.display = 'none';
+                }, 5000);
+
+                // Browser notification
+                if (Notification.permission === "granted") {
+                    new Notification("💰 Yeni pul transfer!", {
+                        body: data.message,
+                        icon: "/favicon.ico"
+                    });
+                }
+
+                // Səs çal (opsional)
+                new Audio('/sounds/notification.mp3').play().catch(() => {});
+            });
+
+            try {
+                await notificationConnection.start();
+                console.log("✅ Notification Hub bağlandı");
+            } catch (err) {
+                console.error("❌ Notification xəta:", err);
+                setTimeout(initNotifications, 5000);
+            }
+        }
+
+        function copyAccountNumber() {
+            const accountNumber = '@Model.AccountNumber';
+            navigator.clipboard.writeText(accountNumber).then(() => {
+                alert('✅ Hesab nömrəsi kopyalandı!');
+            });
+        }
+
+        // Browser notification icazəsi
+        if (Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initNotifications();
+        });
+    </script>
+
+    <style>
+        @@keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+}

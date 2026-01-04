@@ -1,0 +1,6 @@
+@DigitalBankApi_HostAddress = http://localhost:5079
+
+GET {{DigitalBankApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

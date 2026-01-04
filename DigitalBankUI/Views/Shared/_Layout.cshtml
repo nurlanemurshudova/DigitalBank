@@ -1,0 +1,54 @@
+﻿<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - NeoBank</title>
+    <link rel="stylesheet" href="~/assets/styles.css" />
+</head>
+<body>
+    <!-- Background -->
+    <div class="bg">
+        <div class="bg__blob bg__blob--1"></div>
+        <div class="bg__blob bg__blob--2"></div>
+        <div class="bg__grid"></div>
+    </div>
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="topbar__left">
+            <div class="logo">
+                <span class="logo__mark">N</span>
+                <span class="logo__text">NeoBank</span>
+            </div>
+            <span class="badge">Demo</span>
+        </div>
+
+        <div class="topbar__right">
+            @if (User.Identity.IsAuthenticated)
+            {
+                <div class="userchip">
+                    <span class="userchip__dot"></span>
+                    <div class="userchip__meta">
+                        <div class="userchip__name">@User.Identity.Name</div>
+                        <div class="userchip__email">@User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value</div>
+                    </div>
+                </div>
+                <form asp-controller="Account" asp-action="Logout" method="post" style="display: inline;">
+                    <button class="btn btn--ghost" type="submit">Çıxış</button>
+                </form>
+            }
+        </div>
+    </header>
+
+    <main class="shell">
+        @RenderBody()
+    </main>
+
+    <footer class="footer">
+        <span class="muted small">NeoBank Demo — MVC • 2025</span>
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

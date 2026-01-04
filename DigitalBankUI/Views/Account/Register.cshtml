@@ -1,0 +1,135 @@
+﻿@model Register
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NeoBank — Qeydiyyat</title>
+    <link rel="stylesheet" href="~/assets/styles.css" />
+</head>
+<body>
+    <div class="bg">
+        <div class="bg__blob bg__blob--1"></div>
+        <div class="bg__blob bg__blob--2"></div>
+        <div class="bg__grid"></div>
+    </div>
+
+    <header class="topbar">
+        <div class="topbar__left">
+            <div class="logo">
+                <span class="logo__mark">N</span>
+                <span class="logo__text">NeoBank</span>
+            </div>
+            <span class="badge">Demo</span>
+        </div>
+    </header>
+
+    <main class="shell">
+        <section class="auth" id="authView">
+            <div class="auth__card card">
+                <div class="card__header">
+                    <h1 class="h1">Hesab yaradın</h1>
+                    <p class="muted">Məlumatları daxil edərək qeydiyyatdan keçin</p>
+                </div>
+
+                @if (ViewBag.Error != null)
+                {
+                    <div style="padding: 1rem; background: #ef4444; color: white; border-radius: 8px; margin-bottom: 1rem;">
+                        @ViewBag.Error
+                    </div>
+                }
+
+                <div class="tabs" role="tablist">
+                    <a asp-action="Login" asp-controller="Account" class="tab" style="text-decoration: none; cursor: pointer;">Login</a>
+                    <button class="tab is-active" type="button">Register</button>
+                </div>
+
+                <form asp-action="Register" asp-controller="Account" method="post" class="form">
+                    <div class="grid2">
+                        @* AD *@
+                        <label class="field">
+                            <span class="field__label">Ad</span>
+                            <input asp-for="FirstName" class="input" type="text" placeholder="Məs: Elvin" required />
+                            <span asp-validation-for="FirstName" class="text-danger"></span>
+                        </label>
+
+                        @* SOYAD *@
+                        <label class="field">
+                            <span class="field__label">Soyad</span>
+                            <input asp-for="LastName" class="input" type="text" placeholder="Məs: Əliyev" required />
+                            <span asp-validation-for="LastName" class="text-danger"></span>
+                        </label>
+
+                        @* EMAIL *@
+                        <label class="field">
+                            <span class="field__label">Email</span>
+                            <input asp-for="Email" class="input" type="email" placeholder="example@mail.com" required />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </label>
+
+                        @* ŞİFRƏ *@
+                        <label class="field">
+                            <span class="field__label">Şifrə</span>
+                            <input asp-for="Password" class="input" type="password" placeholder="******" required />
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                        </label>
+
+                        @* YAŞ *@
+                        <label class="field">
+                            <span class="field__label">Yaş</span>
+                            <input asp-for="Age" class="input" type="number" placeholder="Məs: 25" />
+                            <span asp-validation-for="Age" class="text-danger"></span>
+                        </label>
+
+                        @* AVATAR URL *@
+                        <label class="field">
+                            <span class="field__label">Profil Şəkli (URL)</span>
+                            <input asp-for="AvatarUrl" class="input" type="text" placeholder="https://image.com/photo.jpg" />
+                            <span asp-validation-for="AvatarUrl" class="text-danger"></span>
+                        </label>
+                    </div>
+
+                    @* ÜNVAN (Tam enli olması üçün grid-dən kənar) *@
+                    <label class="field" style="margin-top: 1rem;">
+                        <span class="field__label">Ünvan</span>
+                        <input asp-for="Address" class="input" type="text" placeholder="Məs: Bakı şəhəri, Nəsimi ray." />
+                        <span asp-validation-for="Address" class="text-danger"></span>
+                    </label>
+
+                    @* Balans avtomatik 0 getsin deyə hidden saxlayırıq *@
+                    <input type="hidden" asp-for="Balance" value="0" />
+
+                    <div class="form__row" style="margin-top: 1.5rem;">
+                        <div class="muted small">
+                            Qeydiyyat düyməsini sıxaraq qaydaları qəbul edirsiniz.
+                        </div>
+                        <button class="btn btn--primary" type="submit">Hesab yarat</button>
+                    </div>
+                </form>
+
+                <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <p class="muted">
+                        Artıq hesabınız var?
+                        <a asp-action="Login" asp-controller="Account" style="color: #3b82f6; text-decoration: none; font-weight: 600;">
+                            Daxil olun →
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <span class="muted small">NeoBank Demo — MVC • 2025</span>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+</body>
+</html>

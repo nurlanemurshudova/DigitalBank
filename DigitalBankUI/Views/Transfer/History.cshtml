@@ -1,0 +1,137 @@
+﻿@model List<Entities.Concrete.TableModels.Transaction>
+@using System.Security.Claims
+
+@{
+    ViewData["Title"] = "Transaction Tarixçəsi";
+    var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+}
+
+<section class="app">
+    <aside class="sidebar card">
+        <div class="sidebar__head">
+            <h2 class="h2">Panel</h2>
+            <p class="muted small">@DateTime.Now.ToString("dd MMM yyyy")</p>
+        </div>
+
+        <nav class="nav">
+            <a asp-controller="Home" asp-action="Index" class="nav__item">
+                <span>🏦</span> <span>Hesab</span>
+            </a>
+            <a asp-controller="Transfer" asp-action="Index" class="nav__item">
+                <span>💸</span> <span>Köçürmə</span>
+            </a>
+            <a asp-controller="Chat" asp-action="Index" class="nav__item">
+                <span>💬</span> <span>Chat</span>
+            </a>
+            <a asp-controller="Settings" asp-action="Index" class="nav__item">
+                <span>⚙️</span> <span>Ayarlar</span>
+            </a>
+            <a asp-controller="Transfer" asp-action="History" class="nav__item is-active">
+                <span>⚙️</span> <span>Tarixce</span>
+            </a>
+        </nav>
+    </aside>
+
+    <section class="content">
+        <div class="view">
+            <div class="card">
+                <div class="card__header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h3 class="h3">Transaction Tarixçəsi</h3>
+                        <p class="muted small">Bütün əməliyyatlarınız.</p>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <!-- Date Filter -->
+                        <form asp-action="History" method="get" style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="date" name="startDate" class="input" value="@ViewBag.StartDate" style="width: auto;" />
+                            <span>-</span>
+                            <input type="date" name="endDate" class="input" value="@ViewBag.EndDate" style="width: auto;" />
+                            <button type="submit" class="btn btn--soft">Filter</button>
+                        </form>
+
+                        <!-- Export Buttons -->
+                        <a asp-action="ExportPDF" asp-route-startDate="@ViewBag.StartDate" asp-route-endDate="@ViewBag.EndDate" class="btn btn--primary">
+                            📄 PDF
+                        </a>
+                        <a asp-action="ExportExcel" asp-route-startDate="@ViewBag.StartDate" asp-route-endDate="@ViewBag.EndDate" class="btn" style="background: #10b981; color: white;">
+                            📊 Excel
+                        </a>
+                    </div>
+                </div>
+
+                <div class="tablewrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Tarix</th>
+                                <th>Növ</th>
+                                <th>Tərəf</th>
+                                <th>Hesab Nömrəsi</th>
+                                <th>Məbləğ</th>
+                                <th>Qeyd</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Any())
+                            {
+                                foreach (var t in Model.OrderByDescending(x => x.CreatedDate))
+                                {
+                                    var isSent = t.SenderId == currentUserId;
+                                    var otherUser = isSent ? t.Receiver : t.Sender;
+
+                                    <tr>
+                                        <td>@t.CreatedDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                        <td>
+                                            <span class="badge" style="background: @(isSent ? "#ef4444" : "#10b981"); color: white; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                                                @(isSent ? "Göndərildi" : "Alındı")
+                                            </span>
+                                        </td>
+                                        <td style="font-weight: 500;">@otherUser.FirstName @otherUser.LastName</td>
+                                        <td class="mono" style="font-size: 0.85rem; color: #6b7280;">@otherUser.AccountNumber</td>
+                                        <td style="color: @(isSent ? "#ef4444" : "#10b981"); font-weight: 700; font-size: 1rem;">
+                                            @(isSent ? "-" : "+")@t.Amount.ToString("N2") AZN
+                                        </td>
+                                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            @(t.Description ?? "-")
+                                        </td>
+                                        <td><span class="badge">@t.Status</span></td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" class="muted" style="text-align: center; padding: 2rem;">Hələ ki, əməliyyat yoxdur.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Summary -->
+                @if (Model.Any())
+                {
+                    var totalSent = Model.Where(t => t.SenderId == currentUserId).Sum(t => t.Amount);
+                    var totalReceived = Model.Where(t => t.ReceiverId == currentUserId).Sum(t => t.Amount);
+
+                    <div style="margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div style="background: #f3f4f6; padding: 1.5rem; border-radius: 12px;">
+                            <div class="muted small" style="margin-bottom: 0.5rem;">Ümumi əməliyyat</div>
+                            <div class="h2" style="color: #1f2937;">@Model.Count</div>
+                        </div>
+                        <div style="background: #fee2e2; padding: 1.5rem; border-radius: 12px;">
+                            <div class="muted small" style="margin-bottom: 0.5rem;">Göndərilən</div>
+                            <div class="h2" style="color: #ef4444;">-@totalSent.ToString("N2") AZN</div>
+                        </div>
+                        <div style="background: #d1fae5; padding: 1.5rem; border-radius: 12px;">
+                            <div class="muted small" style="margin-bottom: 0.5rem;">Alınan</div>
+                            <div class="h2" style="color: #10b981;">+@totalReceived.ToString("N2") AZN</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+</section>

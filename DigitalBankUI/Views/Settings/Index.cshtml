@@ -1,0 +1,183 @@
+﻿@model ApplicationUser
+@{
+    ViewData["Title"] = "Ayarlar";
+}
+
+<section class="app">
+    <aside class="sidebar card">
+        <div class="sidebar__head">
+            <h2 class="h2">Panel</h2>
+            <p class="muted small">@DateTime.Now.ToString("dd MMM yyyy")</p>
+        </div>
+
+        <nav class="nav">
+            <a asp-controller="Home" asp-action="Index" class="nav__item">
+                <span>🏦</span> <span>Hesab</span>
+            </a>
+            <a asp-controller="Transfer" asp-action="Index" class="nav__item">
+                <span>💸</span> <span>Köçürmə</span>
+            </a>
+            <a asp-controller="Chat" asp-action="Index" class="nav__item">
+                <span>💬</span> <span>Chat</span>
+            </a>
+            <a asp-controller="Settings" asp-action="Index" class="nav__item is-active">
+                <span>⚙️</span> <span>Ayarlar</span>
+            </a>
+            <a asp-controller="Transfer" asp-action="History" class="nav__item">
+                <span>⚙️</span> <span>Tarixce</span>
+            </a>
+        </nav>
+    </aside>
+
+    <section class="content">
+        <div class="view">
+            <div class="gridB">
+                <!-- ============================================ -->
+                <!-- Profile Section -->
+                <!-- ============================================ -->
+                <div class="card">
+                    <div class="card__header">
+                        <h3 class="h3">Profil məlumatları</h3>
+                        <p class="muted small">Şəxsi məlumatlarınızı yeniləyin</p>
+                    </div>
+
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success">
+                            @TempData["Success"]
+                        </div>
+                    }
+
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-error">
+                            @TempData["Error"]
+                        </div>
+                    }
+
+                    <!-- Avatar Upload -->
+                    <div class="avatar-section">
+                        <div class="avatar-preview">
+                            @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                            {
+                                <img src="@Model.AvatarUrl" alt="Avatar" class="avatar-img" />
+                            }
+                            else
+                            {
+                                <div class="avatar-placeholder">
+                                    @Model.FirstName?.Substring(0, 1)@Model.LastName?.Substring(0, 1)
+                                </div>
+                            }
+                        </div>
+
+                        <div class="avatar-actions">
+                            <form asp-action="UploadAvatar" method="post" enctype="multipart/form-data" id="avatarForm">
+                                <label class="btn btn--soft" for="avatarInput">
+                                    📷 Şəkil seç
+                                </label>
+                                <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display: none;" onchange="document.getElementById('avatarForm').submit()" />
+                            </form>
+
+                            @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                            {
+                                <form asp-action="DeleteAvatar" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn--ghost" onclick="return confirm('Şəkli silmək istədiyinizdən əminsiniz?')">
+                                        🗑️ Sil
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Profile Form -->
+                    <form asp-action="UpdateProfile" method="post" class="form">
+                        <div class="grid2">
+                            <label class="field">
+                                <span class="field__label">Ad</span>
+                                <input class="input" type="text" name="FirstName" value="@Model.FirstName" required />
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Soyad</span>
+                                <input class="input" type="text" name="LastName" value="@Model.LastName" required />
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Ünvan</span>
+                                <input class="input" type="text" name="Address" value="@Model.Address" />
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Yaş</span>
+                                <input class="input" type="number" name="Age" value="@Model.Age" min="18" max="100" />
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Email (dəyişə bilməz)</span>
+                                <input class="input" type="email" value="@Model.Email" disabled />
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Hesab Nömrəsi</span>
+                                <input class="input" type="text" value="@Model.AccountNumber" disabled />
+                            </label>
+                        </div>
+
+                        <div class="form__row">
+                            <div class="muted small">
+                                Qeydiyyat tarixi: @Model.RegisterDate.ToString("dd.MM.yyyy")
+                            </div>
+                            <button class="btn btn--primary" type="submit">💾 Yadda saxla</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ============================================ -->
+                <!-- Security Section -->
+                <!-- ============================================ -->
+                <div class="card card--glass">
+                    <div class="card__header">
+                        <h3 class="h3">Təhlükəsizlik</h3>
+                        <p class="muted small">Şifrə və hesab təhlükəsizliyi</p>
+                    </div>
+
+                    <div class="stack">
+                        <!-- Change Password -->
+                        <a asp-controller="Settings" asp-action="ChangePassword" class="btn btn--soft">
+                            🔒 Şifrə dəyiş
+                        </a>
+
+                        <!-- Logout -->
+                        <form asp-controller="Account" asp-action="Logout" method="post">
+                            <button class="btn btn--danger" type="submit">
+                                🚪 Çıxış et
+                            </button>
+                        </form>
+                    </div>
+
+                    <hr style="border-color: rgba(255,255,255,0.1); margin: 1.5rem 0;" />
+
+                    <!-- Account Info -->
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span class="info-label">Balans:</span>
+                            <span class="info-value">@Model.Balance.ToString("N2") AZN</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Son yeniləmə:</span>
+                            <span class="info-value">
+                                @(Model.UpdatedDate?.ToString("dd.MM.yyyy HH:mm") ?? "Heç vaxt")
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Email təsdiqi:</span>
+                            <span class="info-value">
+                                @(Model.EmailConfirmed ? "✅ Təsdiqlənib" : "❌ Təsdiqlənməyib")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</section>

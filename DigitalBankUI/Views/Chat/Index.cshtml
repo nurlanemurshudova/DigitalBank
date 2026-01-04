@@ -1,0 +1,283 @@
+﻿@model List<ApplicationUser>
+@{
+    ViewData["Title"] = "Chat";
+    var currentUserId = ViewBag.CurrentUserId;
+}
+
+<section class="app">
+    <aside class="sidebar card">
+        <div class="sidebar__head">
+            <h2 class="h2">Panel</h2>
+            <p class="muted small">@DateTime.Now.ToString("dd MMM yyyy")</p>
+        </div>
+
+        <nav class="nav">
+            <a asp-controller="Home" asp-action="Index" class="nav__item">
+                <span>🏦</span> <span>Hesab</span>
+            </a>
+            <a asp-controller="Transfer" asp-action="Index" class="nav__item">
+                <span>💸</span> <span>Köçürmə</span>
+            </a>
+            <a asp-controller="Chat" asp-action="Index" class="nav__item is-active">
+                <span>💬</span> <span>Chat</span>
+            </a>
+            <a asp-controller="Settings" asp-action="Index" class="nav__item">
+                <span>⚙️</span> <span>Ayarlar</span>
+            </a>
+            <a asp-controller="Transfer" asp-action="History" class="nav__item">
+                <span>⚙️</span> <span>Tarixce</span>
+            </a>
+        </nav>
+    </aside>
+
+    <section class="content">
+        <div class="view">
+            <div class="chatLayout">
+                <!-- User List -->
+                <div class="card chatUsers">
+                    <div class="card__header">
+                        <h3 class="h3">İstifadəçilər</h3>
+                        <p class="muted small">Söhbət üçün seçin.</p>
+                    </div>
+                    <div class="chatUsers__list" id="userList">
+                        @foreach (var user in Model)
+                        {
+                            <div class="chatUser" data-user-id="@user.Id" data-user-name="@user.FirstName @user.LastName" onclick="selectUser(@user.Id, '@user.FirstName @user.LastName')">
+                                <div class="chatUser__avatar">
+                                    @if (!string.IsNullOrEmpty(user.AvatarUrl))
+                                    {
+                                        <img src="@user.AvatarUrl" alt="@user.FirstName" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <div style="width: 45px; height: 45px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem;">
+                                            @user.FirstName.Substring(0, 1)@user.LastName.Substring(0, 1)
+                                        </div>
+                                    }
+                                </div>
+                                <div class="chatUser__info">
+                                    <div class="chatUser__name" style="font-weight: 600;">@user.FirstName @user.LastName</div>
+                                    <div class="chatUser__status muted small">Online</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Chat Box -->
+                <div class="card chatBox">
+                    <div class="chatBox__head">
+                        <div>
+                            <div class="muted small">Söhbət</div>
+                            <div class="h3" id="chatTitle">İstifadəçi seçin</div>
+                        </div>
+                        <button class="btn btn--ghost" onclick="clearChat()" id="clearBtn" style="display: none;">
+                            Söhbəti təmizlə
+                        </button>
+                    </div>
+
+                    <div class="chatBox__messages" id="chatMessages">
+                        <div class="muted" style="text-align: center; padding: 2rem;">
+                            Mesaj yoxdur
+                        </div>
+                    </div>
+
+                    <!-- Typing Indicator (KİM YAZIR) -->
+                    <div id="typingIndicator" style="padding: 0.75rem 1rem; color: #6b7280; display: none; font-style: italic; font-size: 0.875rem; background: #f3f4f6; border-radius: 8px; margin: 0.5rem;">
+                        <span id="typingUserName"></span> yazır...
+                    </div>
+
+                    <form class="chatBox__input" id="chatForm" onsubmit="sendMessage(event)">
+                        <input class="input" id="messageInput" placeholder="Mesaj yaz..." autocomplete="off" disabled />
+                        <button class="btn btn--primary" type="submit" id="sendBtn" disabled>Göndər</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+</section>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+
+    <script>
+        const currentUserId = @currentUserId;
+        let selectedUserId = null;
+        let selectedUserName = '';
+        let connection = null;
+
+        async function initSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/chat")
+                .withAutomaticReconnect()
+                .build();
+
+            // Mesaj qəbul et (KİM GÖNDƏRDİĞİNİ GÖSTƏR)
+            connection.on("ReceiveMessage", (data) => {
+                console.log("Mesaj alındı:", data);
+
+                if (data.senderId === selectedUserId) {
+                    appendMessage(data.message, false, data.timestamp, data.senderName);
+                }
+
+                showNotification(`${data.senderName} yeni mesaj göndərdi`);
+            });
+
+            // Typing indicator (KİM YAZIR)
+            connection.on("UserIsTyping", (data) => {
+                if (data.userId === selectedUserId) {
+                    const typingDiv = document.getElementById('typingIndicator');
+                    const typingName = document.getElementById('typingUserName');
+
+                    typingName.textContent = data.userName;
+                    typingDiv.style.display = 'block';
+
+                    setTimeout(() => {
+                        typingDiv.style.display = 'none';
+                    }, 3000);
+                }
+            });
+
+            try {
+                await connection.start();
+                console.log("✅ SignalR bağlandı");
+            } catch (err) {
+                console.error("❌ SignalR xəta:", err);
+                setTimeout(initSignalR, 5000);
+            }
+        }
+
+        async function selectUser(userId, userName) {
+            selectedUserId = userId;
+            selectedUserName = userName;
+
+            document.getElementById('chatTitle').textContent = userName;
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('clearBtn').style.display = 'block';
+
+            document.querySelectorAll('.chatUser').forEach(u => u.classList.remove('is-active'));
+            document.querySelector(`[data-user-id="${userId}"]`).classList.add('is-active');
+
+            await loadConversation(userId);
+        }
+
+        async function loadConversation(userId) {
+            try {
+                const response = await fetch(`/Chat/GetConversation?userId=${userId}`);
+                const result = await response.json();
+
+                const messagesDiv = document.getElementById('chatMessages');
+                messagesDiv.innerHTML = '';
+
+                if (result.data && result.data.length > 0) {
+                    result.data.forEach(msg => {
+                        const isSent = msg.senderId === currentUserId;
+                        const senderName = isSent ? 'Siz' : selectedUserName;
+                        appendMessage(msg.content, isSent, msg.createdDate, senderName);
+                    });
+                } else {
+                    messagesDiv.innerHTML = '<div class="muted" style="text-align: center; padding: 2rem;">Mesaj yoxdur</div>';
+                }
+
+                scrollToBottom();
+            } catch (error) {
+                console.error('Mesajlar yüklənmədi:', error);
+            }
+        }
+
+        async function sendMessage(event) {
+            event.preventDefault();
+
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message || !selectedUserId) return;
+
+            try {
+                await connection.invoke("SendMessage", selectedUserId, message);
+                appendMessage(message, true, new Date(), 'Siz');
+
+                input.value = '';
+                scrollToBottom();
+            } catch (error) {
+                console.error('Mesaj göndərilmədi:', error);
+                alert('Mesaj göndərilmədi. Yenidən cəhd edin.');
+            }
+        }
+
+        // MESAJI ƏLAVƏ ET (KİM YAZDIĞINI GÖSTƏR)
+        function appendMessage(content, isSent, timestamp, senderName) {
+            const messagesDiv = document.getElementById('chatMessages');
+
+            if (messagesDiv.querySelector('.muted')) {
+                messagesDiv.innerHTML = '';
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chatMessage ${isSent ? 'is-sent' : 'is-received'}`;
+
+            messageDiv.innerHTML = `
+                <div class="chatMessage__bubble">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: ${isSent ? '#3b82f6' : '#10b981'}; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        ${senderName}
+                    </div>
+                    <div class="chatMessage__text">${escapeHtml(content)}</div>
+                    <div style="font-size: 0.7rem; color: #9ca3af; margin-top: 0.35rem; text-align: ${isSent ? 'right' : 'left'};">
+                        ${formatTime(timestamp)}
+                    </div>
+                </div>
+            `;
+
+            messagesDiv.appendChild(messageDiv);
+        }
+
+        // Typing indicator
+        let typingTimeout;
+        document.getElementById('messageInput')?.addEventListener('input', () => {
+            if (!selectedUserId) return;
+
+            clearTimeout(typingTimeout);
+            connection.invoke("UserTyping", selectedUserId);
+
+            typingTimeout = setTimeout(() => {}, 1000);
+        });
+
+        function scrollToBottom() {
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function clearChat() {
+            if (confirm('Söhbəti təmizləmək istədiyinizdən əminsiniz?')) {
+                document.getElementById('chatMessages').innerHTML =
+                    '<div class="muted" style="text-align: center; padding: 2rem;">Mesaj yoxdur</div>';
+            }
+        }
+
+        function showNotification(message) {
+            if (Notification.permission === "granted") {
+                new Notification("💬 Digital Bank", { body: message });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initSignalR();
+
+            if (Notification.permission === "default") {
+                Notification.requestPermission();
+            }
+        });
+    </script>
+}

@@ -1,0 +1,129 @@
+﻿@model List<Transaction>
+@{
+    ViewData["Title"] = "Əməliyyatlar";
+    var currentFilter = ViewBag.CurrentFilter ?? "all";
+}
+
+<div class="admin-page">
+    <div class="admin-header">
+        <div>
+            <h1 class="h1">💸 Əməliyyatlar</h1>
+            <p class="muted">@ViewBag.FilterName - @ViewBag.TotalCount əməliyyat</p>
+        </div>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="filter-bar">
+        <div class="filter-buttons">
+            <a asp-action="Index" asp-route-filter="all"
+               class="btn @(currentFilter == "all" ? "btn--primary" : "btn--ghost")">
+                Hamısı
+            </a>
+            <a asp-action="Index" asp-route-filter="today"
+               class="btn @(currentFilter == "today" ? "btn--primary" : "btn--ghost")">
+                Bu gün
+            </a>
+            <a asp-action="Index" asp-route-filter="week"
+               class="btn @(currentFilter == "week" ? "btn--primary" : "btn--ghost")">
+                Bu həftə
+            </a>
+            <a asp-action="Index" asp-route-filter="month"
+               class="btn @(currentFilter == "month" ? "btn--primary" : "btn--ghost")">
+                Bu ay
+            </a>
+        </div>
+
+        <!-- Custom Date Range -->
+        <form asp-action="FilterByDate" method="get" class="date-filter">
+            <input type="date" name="startDate" class="input"
+                   value="@ViewBag.StartDate" required />
+            <span>-</span>
+            <input type="date" name="endDate" class="input"
+                   value="@ViewBag.EndDate" required />
+            <button type="submit" class="btn btn--soft">Filter</button>
+        </form>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="summary-label">Ümumi Əməliyyat : @ViewBag.TotalCount</div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-history mr-1"></i> @ViewBag.FilterName - Tarixçə</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="transactionsDataTable" width="100%" cellspacing="0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Tarix</th>
+                            <th>Göndərən</th>
+                            <th>Alan</th>
+                            <th>Məbləğ</th>
+                            <th>Status</th>
+                            <th>Qeyd</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tx in Model)
+                        {
+                            <tr>
+                                <td class="font-weight-bold">#@tx.Id</td>
+                                <td>@tx.CreatedDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td>
+                                    <div class="font-weight-bold">@tx.Sender.FirstName @tx.Sender.LastName</div>
+                                    <div class="small text-muted text-truncate" style="max-width: 150px;">@tx.Sender.Email</div>
+                                </td>
+                                <td>
+                                    <div class="font-weight-bold">@tx.Receiver.FirstName @tx.Receiver.LastName</div>
+                                    <div class="small text-muted text-truncate" style="max-width: 150px;">@tx.Receiver.Email</div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-light p-2 shadow-sm text-success" style="font-size: 0.9rem;">
+                                        @tx.Amount.ToString("N2") AZN
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (tx.Status == TransactionStatus.Success)
+                                    {
+                                        <span class="badge badge-success badge-pill px-3">Uğurlu</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-danger badge-pill px-3">Uğursuz</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="small text-wrap">@(string.IsNullOrEmpty(tx.Description) ? "-" : tx.Description)</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+</div>
+
+@section Scripts {
+    <script>
+        // DataTable with export
+        $(document).ready(function() {
+            $('#transactionsTable').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ],
+                order: [[0, 'desc']],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/az.json'
+                }
+            });
+        });
+    </script>
+}
