@@ -91,10 +91,6 @@ namespace DigitalBankUI.Controllers
             Response.Cookies.Delete("AdminAuthToken");
             Response.Cookies.Delete("AuthToken");
 
-            //HttpContext.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-            //HttpContext.Response.Headers["Pragma"] = "no-cache";
-            //HttpContext.Response.Headers["Expires"] = "0";
-
 
             return RedirectToAction("Login", "Account");
         }

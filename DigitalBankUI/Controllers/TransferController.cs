@@ -168,7 +168,7 @@ namespace DigitalBankUI.Controllers
                 PdfWriter.GetInstance(document, ms);
                 document.Open();
 
-                // Title
+                
                 var titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 18);
                 var title = new Paragraph("Transaction Report", titleFont);
                 title.Alignment = Element.ALIGN_CENTER;
@@ -176,7 +176,7 @@ namespace DigitalBankUI.Controllers
 
                 document.Add(new Paragraph(" "));
 
-                // User info
+                
                 var infoFont = FontFactory.GetFont(FontFactory.HELVETICA, 10);
                 document.Add(new Paragraph($"User: {user.FirstName} {user.LastName}", infoFont));
                 document.Add(new Paragraph($"Account: {user.AccountNumber}", infoFont));
@@ -184,7 +184,7 @@ namespace DigitalBankUI.Controllers
 
                 document.Add(new Paragraph(" "));
 
-                // Table
+                
                 var table = new PdfPTable(6);
                 table.WidthPercentage = 100;
 

@@ -126,7 +126,6 @@ namespace DigitalBankUI.Areas.Dashboard.Controllers
         [Authorize]
         public IActionResult LogOut()
         {
-            // Kukiləri silirik
             Response.Cookies.Delete("AdminAuthToken");
             Response.Cookies.Delete("AuthToken");
 

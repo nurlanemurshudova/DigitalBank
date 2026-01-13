@@ -18,13 +18,13 @@ namespace DigitalBankUI.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
-        private readonly ITransactionService _transactionService; // ✅ Əlavə edildi
+        private readonly ITransactionService _transactionService; 
 
         public HomeController(
             UserManager<ApplicationUser> userManager,
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
-            ITransactionService transactionService) // ✅ DI
+            ITransactionService transactionService) 
         {
             _userManager = userManager;
             _httpClientFactory = httpClientFactory;

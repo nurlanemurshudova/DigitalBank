@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore; // ToListAsync və Include üçün lazımdır
+
 
 namespace DigitalBankUI.Areas.Dashboard.Controllers
 {
