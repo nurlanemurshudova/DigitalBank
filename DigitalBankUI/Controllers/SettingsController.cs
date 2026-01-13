@@ -50,7 +50,7 @@ namespace DigitalBankUI.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Update fields
+
             user.FirstName = model.FirstName;
             user.LastName = model.LastName;
             user.Address = model.Address;

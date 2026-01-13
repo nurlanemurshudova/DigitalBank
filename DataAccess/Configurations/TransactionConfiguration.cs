@@ -15,10 +15,8 @@ namespace DataAccess.Configurations
         {
             builder.ToTable("Transactions");
 
-            // Primary Key
             builder.HasKey(t => t.Id);
 
-            // Properties
             builder.Property(t => t.Amount)
                 .IsRequired()
                 .HasPrecision(18, 2);
@@ -28,20 +26,17 @@ namespace DataAccess.Configurations
 
             builder.Property(t => t.Status)
                 .IsRequired()
-                .HasConversion<int>(); // Enum-u int olaraq saxla
+                .HasConversion<int>(); 
 
             builder.Property(t => t.CreatedDate)
                 .HasDefaultValueSql("GETDATE()");
 
-            // Indexes
             builder.HasIndex(t => t.SenderId);
             builder.HasIndex(t => t.ReceiverId);
             builder.HasIndex(t => t.CreatedDate);
             builder.HasIndex(t => t.Status);
 
-            // Composite Index (Sender + Date)
             builder.HasIndex(t => new { t.SenderId, t.CreatedDate });
-            // Relationships
             builder.HasOne(t => t.Sender)
                 .WithMany(u => u.SentTransactions)
                 .HasForeignKey(t => t.SenderId)
@@ -51,9 +46,7 @@ namespace DataAccess.Configurations
                 .WithMany(u => u.ReceivedTransactions)
                 .HasForeignKey(t => t.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
-            // ============================================
-            // Relationships (ApplicationUserConfiguration-da təyin olunub)
-            // ============================================
+
         }
     }
 }

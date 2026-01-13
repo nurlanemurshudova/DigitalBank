@@ -54,7 +54,7 @@
                     <span>Transaction</span>
                 </a>
             </li>
-          
+
             @if (User.IsInRole("Admin") && !User.IsInRole("Subadmin"))
             {
                 @* <li class="nav-item active">
@@ -138,16 +138,14 @@
                                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Profile
                                 </a>
-                                <a class="dropdown-item" href="#">
+
+                                <a class="dropdown-item" asp-area="Dashboard" asp-controller="Settings" asp-action="Index">
                                     <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Settings
                                 </a>
-                                <a class="dropdown-item" href="#">
-                                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Activity Log
-                                </a>
+
                                 <div class="dropdown-divider"></div>
-                                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                                <form asp-area="Dashboard" asp-controller="Account" asp-action="Logout" method="post">
                                     <button type="submit" class="dropdown-item">
                                         <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
                                         Logout
@@ -172,7 +170,7 @@
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
-                        <span>İstifadəçi Paneli</span>
+                        <span>Admin Panel</span>
                     </div>
                 </div>
             </footer>

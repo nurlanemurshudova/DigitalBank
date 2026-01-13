@@ -4,6 +4,16 @@
 @{
     ViewData["Title"] = "Transaction Tarixçəsi";
     var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+    // Hesab nömrəsini maskala: 1234567890123456 -> ************3456
+    string MaskAccountNumber(string accountNumber)
+    {
+        if (string.IsNullOrEmpty(accountNumber) || accountNumber.Length < 4)
+            return accountNumber;
+
+        var lastFour = accountNumber.Substring(accountNumber.Length - 4);
+        return new string('*', 12) + lastFour;
+    }
 }
 
 <section class="app">
@@ -27,7 +37,7 @@
                 <span>⚙️</span> <span>Ayarlar</span>
             </a>
             <a asp-controller="Transfer" asp-action="History" class="nav__item is-active">
-                <span>⚙️</span> <span>Tarixce</span>
+                <span>📜</span> <span>Tarixçə</span>
             </a>
         </nav>
     </aside>
@@ -42,7 +52,6 @@
                     </div>
 
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                        <!-- Date Filter -->
                         <form asp-action="History" method="get" style="display: flex; gap: 0.5rem; align-items: center;">
                             <input type="date" name="startDate" class="input" value="@ViewBag.StartDate" style="width: auto;" />
                             <span>-</span>
@@ -50,7 +59,6 @@
                             <button type="submit" class="btn btn--soft">Filter</button>
                         </form>
 
-                        <!-- Export Buttons -->
                         <a asp-action="ExportPDF" asp-route-startDate="@ViewBag.StartDate" asp-route-endDate="@ViewBag.EndDate" class="btn btn--primary">
                             📄 PDF
                         </a>
@@ -78,20 +86,49 @@
                             {
                                 foreach (var t in Model.OrderByDescending(x => x.CreatedDate))
                                 {
-                                    var isSent = t.SenderId == currentUserId;
-                                    var otherUser = isSent ? t.Receiver : t.Sender;
+                                    @* ✅ Depozit = SenderId və ReceiverId eyni olanda *@
+                                    var isDeposit = t.SenderId == t.ReceiverId;
+                                    var isSent = !isDeposit && t.SenderId == currentUserId;
+                                    var otherUser = isDeposit ? null : (isSent ? t.Receiver : t.Sender);
 
                                     <tr>
                                         <td>@t.CreatedDate.ToString("dd.MM.yyyy HH:mm")</td>
                                         <td>
-                                            <span class="badge" style="background: @(isSent ? "#ef4444" : "#10b981"); color: white; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
-                                                @(isSent ? "Göndərildi" : "Alındı")
-                                            </span>
+                                            @if (isDeposit)
+                                            {
+                                                <span class="badge" style="background: #3b82f6; color: white; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                                                    💳 Depozit
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge" style="background: @(isSent ? "#ef4444" : "#10b981"); color: white; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                                                    @(isSent ? "Göndərildi" : "Alındı")
+                                                </span>
+                                            }
                                         </td>
-                                        <td style="font-weight: 500;">@otherUser.FirstName @otherUser.LastName</td>
-                                        <td class="mono" style="font-size: 0.85rem; color: #6b7280;">@otherUser.AccountNumber</td>
-                                        <td style="color: @(isSent ? "#ef4444" : "#10b981"); font-weight: 700; font-size: 1rem;">
-                                            @(isSent ? "-" : "+")@t.Amount.ToString("N2") AZN
+                                        <td style="font-weight: 500;">
+                                            @if (isDeposit)
+                                            {
+                                                <span style="color: #3b82f6;">Stripe Payment</span>
+                                            }
+                                            else
+                                            {
+                                                @:@otherUser.FirstName ******
+                                            }
+                                        </td>
+                                        <td class="mono" style="font-size: 0.85rem; color: #6b7280;">
+                                            @if (isDeposit)
+                                            {
+                                                <span>-</span>
+                                            }
+                                            else
+                                            {
+                                                @MaskAccountNumber(otherUser.AccountNumber)
+                                            }
+                                        </td>
+                                        <td style="color: @(isDeposit ? "#3b82f6" : (isSent ? "#ef4444" : "#10b981")); font-weight: 700; font-size: 1rem;">
+                                            @(isDeposit || !isSent ? "+" : "-")@t.Amount.ToString("N2") AZN
                                         </td>
                                         <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                             @(t.Description ?? "-")
@@ -109,28 +146,6 @@
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Summary -->
-                @if (Model.Any())
-                {
-                    var totalSent = Model.Where(t => t.SenderId == currentUserId).Sum(t => t.Amount);
-                    var totalReceived = Model.Where(t => t.ReceiverId == currentUserId).Sum(t => t.Amount);
-
-                    <div style="margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <div style="background: #f3f4f6; padding: 1.5rem; border-radius: 12px;">
-                            <div class="muted small" style="margin-bottom: 0.5rem;">Ümumi əməliyyat</div>
-                            <div class="h2" style="color: #1f2937;">@Model.Count</div>
-                        </div>
-                        <div style="background: #fee2e2; padding: 1.5rem; border-radius: 12px;">
-                            <div class="muted small" style="margin-bottom: 0.5rem;">Göndərilən</div>
-                            <div class="h2" style="color: #ef4444;">-@totalSent.ToString("N2") AZN</div>
-                        </div>
-                        <div style="background: #d1fae5; padding: 1.5rem; border-radius: 12px;">
-                            <div class="muted small" style="margin-bottom: 0.5rem;">Alınan</div>
-                            <div class="h2" style="color: #10b981;">+@totalReceived.ToString("N2") AZN</div>
-                        </div>
-                    </div>
-                }
             </div>
         </div>
     </section>

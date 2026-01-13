@@ -3,8 +3,13 @@ using Business.Concrete;
 using DataAccess.Context;
 using DataAccess.UnitOfWork;
 using DigitalBankUI.Hubs;
+using Entities.Concrete.Dtos;
 using Entities.Concrete.TableModels.Membership;
+using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace DigitalBankUI
 {
@@ -13,10 +18,11 @@ namespace DigitalBankUI
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
             builder.Services.AddDbContext<ApplicationDbContext>()
-            .AddIdentity<ApplicationUser, ApplicationRole>()
-            .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
+                .AddIdentity<ApplicationUser, ApplicationRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
 
             builder.Services.Configure<IdentityOptions>(options =>
             {
@@ -25,41 +31,97 @@ namespace DigitalBankUI
                 options.Password.RequireUppercase = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequiredLength = 5;
-
                 options.User.RequireUniqueEmail = true;
             });
-            builder.Services.ConfigureApplicationCookie(options =>
+
+            // JWT Authentication
+            builder.Services.AddAuthentication(options =>
             {
-                options.LoginPath = "/Account/Login";
-                options.AccessDeniedPath = "/Account/Login";
-                options.ExpireTimeSpan = TimeSpan.FromHours(1);
-                options.SlidingExpiration = true;
-
-                options.Events.OnRedirectToLogin = context =>
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.SaveToken = true;
+                options.RequireHttpsMetadata = false;
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    string requestedPath = context.Request.Path.ToString();
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])
+                    ),
+                    ClockSkew = TimeSpan.Zero
+                };
 
-                    if (requestedPath.StartsWith("/Dashboard", StringComparison.OrdinalIgnoreCase))
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
                     {
-                        context.Response.Redirect("/Dashboard/Account/Login?ReturnUrl=" + context.Request.Path);
-                        context.Response.StatusCode = 302;
-                    }
-                    else
+                        if (!string.IsNullOrEmpty(context.Token))
+                        {
+                            return Task.CompletedTask;
+                        }
+
+                        var path = context.HttpContext.Request.Path;
+
+                        if (path.StartsWithSegments("/Dashboard"))
+                        {
+                            var adminToken = context.Request.Cookies["AdminAuthToken"];
+                            if (!string.IsNullOrEmpty(adminToken))
+                            {
+                                context.Token = adminToken;
+                            }
+                        }
+                        else
+                        {
+                            var userToken = context.Request.Cookies["AuthToken"];
+                            if (!string.IsNullOrEmpty(userToken))
+                            {
+                                context.Token = userToken;
+                            }
+                        }
+
+                        return Task.CompletedTask;
+                    },
+                    OnChallenge = context =>
                     {
-                        context.Response.Redirect(context.RedirectUri);
-                        context.Response.StatusCode = 302;
+                        context.HandleResponse();
+
+                        if (context.Request.Path.StartsWithSegments("/Home/PaymentSuccess") ||
+                            context.Request.Path.StartsWithSegments("/Home/PaymentCancel"))
+                        {
+                            return Task.CompletedTask;
+                        }
+
+                        if (context.Request.Path.StartsWithSegments("/Dashboard"))
+                        {
+                            context.Response.Redirect("/Dashboard/Account/Login");
+                        }
+                        else
+                        {
+                            context.Response.Redirect("/Account/Login");
+                        }
+
+                        return Task.CompletedTask;
                     }
-                    return Task.CompletedTask;
                 };
             });
 
+            builder.Services.AddHttpClient();
             builder.Services.AddSignalR();
             builder.Services.AddControllersWithViews();
 
-            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>(); 
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<ITransactionService, TransactionManager>();
-            builder.Services.AddScoped<IMessageService,MessageManager>();
+            builder.Services.AddScoped<IMessageService, MessageManager>();
+            builder.Services.AddScoped<INotificationService, NotificationManager>();
 
+            
 
             var app = builder.Build();
 
@@ -72,7 +134,6 @@ namespace DigitalBankUI
                     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
                     string[] roles = { "Admin", "SubAdmin", "User" };
-
                     foreach (var role in roles)
                     {
                         if (!await roleManager.RoleExistsAsync(role))
@@ -83,7 +144,6 @@ namespace DigitalBankUI
 
                     var adminEmail = "admin@gmail.com";
                     var adminUser = await userManager.FindByEmailAsync(adminEmail);
-
                     if (adminUser == null)
                     {
                         var admin = new ApplicationUser
@@ -94,9 +154,7 @@ namespace DigitalBankUI
                             FirstName = "System",
                             LastName = "Admin"
                         };
-
                         var result = await userManager.CreateAsync(admin, "Admin123*");
-
                         if (result.Succeeded)
                         {
                             await userManager.AddToRoleAsync(admin, "Admin");
@@ -106,7 +164,7 @@ namespace DigitalBankUI
                 catch (Exception ex)
                 {
                     var logger = services.GetRequiredService<ILogger<Program>>();
-                    logger.LogError(ex, "xəta");
+                    logger.LogError(ex, "Xəta baş verdi");
                 }
             }
 
@@ -118,11 +176,11 @@ namespace DigitalBankUI
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-
             app.UseRouting();
 
             app.UseAuthentication();
             app.UseAuthorization();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllerRoute(
@@ -133,7 +191,9 @@ namespace DigitalBankUI
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
             });
+
             app.MapHub<ChatHub>("/hubs/chat");
+            app.MapHub<NotificationHub>("/hubs/notification");
             app.Run();
         }
     }

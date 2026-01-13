@@ -57,7 +57,6 @@
                                 </div>
                                 <div class="chatUser__info">
                                     <div class="chatUser__name" style="font-weight: 600;">@user.FirstName @user.LastName</div>
-                                    <div class="chatUser__status muted small">Online</div>
                                 </div>
                             </div>
                         }
@@ -71,8 +70,8 @@
                             <div class="muted small">Söhbət</div>
                             <div class="h3" id="chatTitle">İstifadəçi seçin</div>
                         </div>
-                        <button class="btn btn--ghost" onclick="clearChat()" id="clearBtn" style="display: none;">
-                            Söhbəti təmizlə
+                        <button class="btn btn--danger" onclick="deleteConversation()" id="clearBtn" style="display: none; background: #ef4444; color: white;">
+                            🗑️ Söhbəti sil
                         </button>
                     </div>
 
@@ -259,10 +258,35 @@
             return date.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
         }
 
-        function clearChat() {
-            if (confirm('Söhbəti təmizləmək istədiyinizdən əminsiniz?')) {
-                document.getElementById('chatMessages').innerHTML =
-                    '<div class="muted" style="text-align: center; padding: 2rem;">Mesaj yoxdur</div>';
+                async function deleteConversation() {
+            if (!selectedUserId) {
+                alert('Əvvəlcə istifadəçi seçin');
+                return;
+            }
+
+            if (confirm('⚠️ DİQQƏT: Söhbət HƏR İKİ TƏRƏF ÜÇÜN silinəcək. Əminsiniz?')) {
+                try {
+                    const response = await fetch(`/Chat/DeleteConversation?userId=${selectedUserId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (result.isSuccess) {
+                        document.getElementById('chatMessages').innerHTML =
+                            '<div class="muted" style="text-align: center; padding: 2rem;">Mesaj yoxdur</div>';
+
+                        alert('✅ Söhbət hər iki tərəf üçün silindi');
+                    } else {
+                        alert('❌ Xəta: ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('Söhbət silinmədi:', error);
+                    alert('❌ Xəta baş verdi');
+                }
             }
         }
 

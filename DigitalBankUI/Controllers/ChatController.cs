@@ -50,14 +50,14 @@ namespace DigitalBankUI.Controllers
             return Json(result);
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetUnreadCount()
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteConversation(int userId)
         {
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var result = await _messageService.GetUnreadCountAsync(currentUserId);
+            var result = await _messageService.DeleteConversationAsync(currentUserId, userId);
 
             return Json(result);
         }
-
     }
 }

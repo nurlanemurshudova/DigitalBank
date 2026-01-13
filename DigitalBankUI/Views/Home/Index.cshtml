@@ -1,8 +1,11 @@
-﻿@model ApplicationUser
-@using Business.Utilities
+﻿
+
+@model ApplicationUser
+
 
 @{
     ViewData["Title"] = "Dashboard";
+    var recentTransactions = ViewBag.RecentTransactions as List<Transaction> ?? new List<Transaction>();
 }
 
 <section class="app">
@@ -25,9 +28,8 @@
             <a asp-controller="Settings" asp-action="Index" class="nav__item">
                 <span>⚙️</span> <span>Ayarlar</span>
             </a>
-
             <a asp-controller="Transfer" asp-action="History" class="nav__item">
-                <span>⚙️</span> <span>Tarixce</span>
+                <span>📜</span> <span>Tarixçə</span>
             </a>
         </nav>
 
@@ -45,16 +47,19 @@
 
     <section class="content">
         <div class="view">
-            <!-- REAL-TIME Notification Alert -->
-            <div id="notificationAlert" style="display: none; margin-bottom: 1rem; padding: 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3); animation: slideIn 0.3s ease;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <span style="font-size: 2rem;">💰</span>
-                    <div>
-                        <strong style="font-size: 1.1rem;">Yeni pul transfer!</strong>
-                        <p id="notificationText" style="margin: 0.25rem 0 0 0; opacity: 0.9;"></p>
-                    </div>
+            @if (TempData["Success"] != null)
+            {
+                <div style="padding: 1rem; background: #10b981; color: white; border-radius: 8px; margin-bottom: 1rem;">
+                    @TempData["Success"]
                 </div>
-            </div>
+            }
+
+            @if (TempData["Error"] != null)
+            {
+                <div style="padding: 1rem; background: #ef4444; color: white; border-radius: 8px; margin-bottom: 1rem;">
+                    @TempData["Error"]
+                </div>
+            }
 
             <div class="gridA">
                 <div class="card">
@@ -87,6 +92,9 @@
                             <div class="account__actions">
                                 <a asp-controller="Transfer" asp-action="Index" class="btn btn--soft">Pul Köçür</a>
                                 <button class="btn btn--ghost" onclick="copyAccountNumber()">Kopyala</button>
+                                <button class="btn btn--primary" onclick="showDepositModal()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                    💳 Balans Artır
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -103,26 +111,43 @@
                             <thead>
                                 <tr>
                                     <th>Tarix</th>
+                                    <th>Növ</th>
                                     <th>Məbləğ</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
-                            <tbody id="transactionTable">
-                                @{
-                                    var allTransactions = Model.SentTransactions
-                                    .Concat(Model.ReceivedTransactions)
-                                    .OrderByDescending(t => t.CreatedDate)
-                                    .Take(5);
-                                }
-
-                                @if (allTransactions.Any())
+                            <tbody>
+                                @if (recentTransactions.Any())
                                 {
-                                    foreach (var item in allTransactions)
+                                    foreach (var item in recentTransactions)
                                     {
+                                        var isDeposit = item.SenderId == item.ReceiverId;
+                                        var isSent = !isDeposit && item.SenderId == Model.Id;
+
                                         <tr>
                                             <td>@item.CreatedDate.ToString("dd.MM.yyyy HH:mm")</td>
-                                            <td style="color: @(item.SenderId == Model.Id ? "#ef4444" : "#10b981"); font-weight: 600;">
-                                                @(item.SenderId == Model.Id ? "-" : "+") @item.Amount.ToString("N2") AZN
+                                            <td>
+                                                @if (isDeposit)
+                                                {
+                                                    <span class="badge" style="background: #3b82f6; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                                                        💳 Depozit
+                                                    </span>
+                                                }
+                                                else if (isSent)
+                                                {
+                                                    <span class="badge" style="background: #ef4444; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                                                        Göndərildi
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge" style="background: #10b981; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                                                        Alındı
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td style="color: @(isDeposit ? "#3b82f6" : (isSent ? "#ef4444" : "#10b981")); font-weight: 600;">
+                                                @(isDeposit || !isSent ? "+" : "-") @item.Amount.ToString("N2") AZN
                                             </td>
                                             <td><span class="badge">@item.Status</span></td>
                                         </tr>
@@ -131,7 +156,7 @@
                                 else
                                 {
                                     <tr>
-                                        <td colspan="3" class="muted">Hələ ki, əməliyyat yoxdur.</td>
+                                        <td colspan="4" class="muted">Hələ ki, əməliyyat yoxdur.</td>
                                     </tr>
                                 }
                             </tbody>
@@ -143,87 +168,95 @@
     </section>
 </section>
 
-@section Scripts {
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-    <script>
-        const currentUserId = @Model.Id;
-        let notificationConnection = null;
+<!-- DEPOSIT MODAL -->
+<div id="depositModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 2rem; border-radius: 16px; max-width: 400px; width: 90%;">
+        <h3 style="margin-bottom: 1rem; color: #111;">Balans Artır</h3>
+        <p style="color: #666; margin-bottom: 1.5rem;">Məbləğ seçin və ya daxil edin:</p>
 
-        // REAL-TIME NOTIFICATION
-        async function initNotifications() {
-            notificationConnection = new signalR.HubConnectionBuilder()
-                .withUrl("/hubs/notification")
-                .withAutomaticReconnect()
-                .build();
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+            <button onclick="selectAmount(10)" class="amount-btn">10 AZN</button>
+            <button onclick="selectAmount(50)" class="amount-btn">50 AZN</button>
+            <button onclick="selectAmount(100)" class="amount-btn">100 AZN</button>
+        </div>
 
-            notificationConnection.on("ReceiveNotification", (data) => {
-                console.log("💰 Notification alındı:", data);
+        <input type="number" id="customAmount" placeholder="Və ya digər məbləğ" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 1rem;" />
 
-                const alert = document.getElementById('notificationAlert');
-                const text = document.getElementById('notificationText');
-                text.textContent = data.message;
-                alert.style.display = 'block';
+        <div style="display: flex; gap: 0.5rem;">
+            <button onclick="hideDepositModal()" style="flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer;">Ləğv et</button>
+            <button onclick="processDeposit()" style="flex: 1; padding: 0.75rem; border: none; border-radius: 8px; background: #10b981; color: white; cursor: pointer; font-weight: 600;">Davam et</button>
+        </div>
+    </div>
+</div>
 
-                // Balansı yenilə
-                if (data.newBalance) {
-                    document.getElementById('currentBalance').textContent = data.newBalance.toFixed(2) + ' AZN';
-                    document.querySelector('.balance').textContent = data.newBalance.toFixed(2);
-                }
+<style>
+    .amount-btn {
+        padding: 0.75rem;
+        border: 2px solid #10b981;
+        background: white;
+        color: #10b981;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
 
-                // 5 saniyədən sonra gizlət
-                setTimeout(() => {
-                    alert.style.display = 'none';
-                }, 5000);
+        .amount-btn:hover, .amount-btn.selected {
+            background: #10b981;
+            color: white;
+        }
+</style>
 
-                // Browser notification
-                if (Notification.permission === "granted") {
-                    new Notification("💰 Yeni pul transfer!", {
-                        body: data.message,
-                        icon: "/favicon.ico"
-                    });
-                }
+<script>
+    let selectedAmount = 0;
 
-                // Səs çal (opsional)
-                new Audio('/sounds/notification.mp3').play().catch(() => {});
+    function showDepositModal() {
+        document.getElementById('depositModal').style.display = 'flex';
+    }
+
+    function hideDepositModal() {
+        document.getElementById('depositModal').style.display = 'none';
+        selectedAmount = 0;
+        document.getElementById('customAmount').value = '';
+    }
+
+    function selectAmount(amount) {
+        selectedAmount = amount;
+        document.getElementById('customAmount').value = amount;
+        document.querySelectorAll('.amount-btn').forEach(btn => btn.classList.remove('selected'));
+        event.target.classList.add('selected');
+    }
+
+    async function processDeposit() {
+        const amount = parseFloat(document.getElementById('customAmount').value || selectedAmount);
+
+        if (!amount || amount <= 0) {
+            alert('Məbləğ daxil edin');
+            return;
+        }
+
+        try {
+            const response = await fetch('/Home/CreatePayment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount })
             });
 
-            try {
-                await notificationConnection.start();
-                console.log("✅ Notification Hub bağlandı");
-            } catch (err) {
-                console.error("❌ Notification xəta:", err);
-                setTimeout(initNotifications, 5000);
+            const data = await response.json();
+
+            if (data.success && data.url) {
+                window.location.href = data.url;
+            } else {
+                alert('Xəta: ' + (data.message || 'Ödəniş yaradılmadı'));
             }
+        } catch (error) {
+            alert('Sistem xətası');
         }
+    }
 
-        function copyAccountNumber() {
-            const accountNumber = '@Model.AccountNumber';
-            navigator.clipboard.writeText(accountNumber).then(() => {
-                alert('✅ Hesab nömrəsi kopyalandı!');
-            });
-        }
-
-        // Browser notification icazəsi
-        if (Notification.permission === "default") {
-            Notification.requestPermission();
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initNotifications();
-        });
-    </script>
-
-    <style>
-        @@keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
-}
+    function copyAccountNumber() {
+        const accountNumber = '@Model.AccountNumber';
+        navigator.clipboard.writeText(accountNumber);
+        alert('Hesab nömrəsi kopyalandı!');
+    }
+</script>

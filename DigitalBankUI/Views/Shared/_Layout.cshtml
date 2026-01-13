@@ -7,21 +7,19 @@
     <link rel="stylesheet" href="~/assets/styles.css" />
 </head>
 <body>
-    <!-- Background -->
     <div class="bg">
         <div class="bg__blob bg__blob--1"></div>
         <div class="bg__blob bg__blob--2"></div>
         <div class="bg__grid"></div>
     </div>
 
-    <!-- Topbar -->
     <header class="topbar">
         <div class="topbar__left">
             <div class="logo">
                 <span class="logo__mark">N</span>
                 <span class="logo__text">NeoBank</span>
             </div>
-            <span class="badge">Demo</span>
+            @* <span class="badge">Demo</span> *@
         </div>
 
         <div class="topbar__right">
@@ -41,14 +39,310 @@
         </div>
     </header>
 
+    <!-- Real-time notification toasts -->
+    <div id="receiverAlert" class="notification-toast">
+        <div class="notification-header">
+            <span class="notification-icon">💰</span>
+            <span class="notification-title">Balans Artırıldı!</span>
+            <button onclick="closeNotification('receiverAlert')" class="notification-close">&times;</button>
+        </div>
+        <div id="receiverAlertText" class="notification-text"></div>
+        <div id="receiverAlertBalance" class="notification-balance"></div>
+    </div>
+
+    <div id="senderAlert" class="notification-toast notification-toast--sent">
+        <div class="notification-header">
+            @* <span class="notification-icon">✅</span>
+            <span class="notification-title">Uğurla Göndərildi!</span> *@
+            <button onclick="closeNotification('senderAlert')" class="notification-close">&times;</button>
+        </div>
+        <div id="senderAlertText" class="notification-text"></div>
+        <div id="senderAlertBalance" class="notification-balance"></div>
+    </div>
+
     <main class="shell">
         @RenderBody()
     </main>
 
     <footer class="footer">
-        <span class="muted small">NeoBank Demo — MVC • 2025</span>
+        <span class="muted small">NeoBank • 2025</span>
     </footer>
-
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        @if (User.Identity.IsAuthenticated)
+        {
+                <text>
+                // ✅ Global dəyişənlər
+                window.currentUserId = '@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value';
+                window.notificationConnection = null;
+
+                // ✅ SignalR bağlantısı
+                async function initNotifications() {
+                    window.notificationConnection = new signalR.HubConnectionBuilder()
+                        .withUrl("/hubs/notification")
+                        .withAutomaticReconnect([0, 2000, 5000, 10000])
+                        .configureLogging(signalR.LogLevel.Information)
+                        .build();
+
+                    // Real-time notification
+                    notificationConnection.on("ReceiveNotification", (data) => {
+                        console.log("📩 Real-time bildiriş:", data);
+
+                        if (data.type === "received") {
+                            showNotification('receiverAlert', 'receiverAlertText', 'receiverAlertBalance', data);
+                        } else if (data.type === "sent") {
+                            showNotification('senderAlert', 'senderAlertText', 'senderAlertBalance', data);
+                        }
+
+                        if (Notification.permission === "granted") {
+                            new Notification("NeoBank", {
+                                body: data.message,
+                                icon: "/favicon.ico"
+                            });
+                        }
+
+                        playNotificationSound();
+                        updateBalance(data.newBalance);
+                    });
+
+                    notificationConnection.onreconnecting(() => console.log("🔄 Yenidən bağlanır..."));
+                    notificationConnection.onreconnected(() => {
+                        console.log("✅ Yenidən bağlandı");
+                        loadUnreadNotifications(); // Yenidən bağlananda yoxla
+                    });
+                    notificationConnection.onclose(() => {
+                        console.log("❌ Bağlantı kəsildi");
+                        setTimeout(initNotifications, 5000);
+                    });
+
+                    try {
+                        await notificationConnection.start();
+                        console.log("✅ SignalR bağlandı");
+
+                        // ✅ Daxil olan kimi oxunmamış bildirişləri yüklə
+                        await loadUnreadNotifications();
+                    } catch (err) {
+                        console.error("❌ Bağlantı xətası:", err);
+                        setTimeout(initNotifications, 5000);
+                    }
+                }
+
+                // ✅ Database-dən oxunmamış bildirişləri gətir
+                async function loadUnreadNotifications() {
+                    try {
+                        const response = await fetch('/Notification/GetUnread');
+                        const data = await response.json();
+
+                        if (data.success && data.notifications.length > 0) {
+                            console.log(`📬 ${data.notifications.length} oxunmamış bildiriş tapıldı`);
+
+                            // Hər birini göstər
+                            for (const notif of data.notifications) {
+                                showNotification('receiverAlert', 'receiverAlertText', 'receiverAlertBalance', {
+                                    message: notif.message,
+                                    newBalance: null, // Database-də balans saxlanmır
+                                    timestamp: notif.createdDate
+                                });
+
+                                // Bildirişi oxunmuş et
+                                await markAsRead(notif.id);
+
+                                // Növbəti bildiriş üçün 2 saniyə gözlə
+                                await new Promise(resolve => setTimeout(resolve, 2000));
+                            }
+                        }
+                    } catch (err) {
+                        console.error("❌ Bildirişlər yüklənmədi:", err);
+                    }
+                }
+
+                // Bildirişi oxunmuş et
+                async function markAsRead(notificationId) {
+                    try {
+                        // ✅ Form data kimi göndər (DTO yox)
+                        const formData = new FormData();
+                        formData.append('id', notificationId);
+
+                        await fetch('/Notification/MarkAsRead', {
+                            method: 'POST',
+                            body: formData
+                        });
+                    } catch (err) {
+                        console.error("❌ MarkAsRead xəta:", err);
+                    }
+                }
+
+                // Notification göstər
+                function showNotification(alertId, textId, balanceId, data) {
+                    const alertBox = document.getElementById(alertId);
+                    const alertText = document.getElementById(textId);
+                    const alertBalance = document.getElementById(balanceId);
+
+                    if (alertBox && alertText) {
+                        alertText.textContent = data.message;
+
+                        if (alertBalance && data.newBalance !== null) {
+                            alertBalance.textContent = `Yeni balans: ${data.newBalance.toFixed(2)} AZN`;
+                            alertBalance.style.display = 'block';
+                        } else if (alertBalance) {
+                            alertBalance.style.display = 'none';
+                        }
+
+                        alertBox.style.display = 'block';
+                        alertBox.style.animation = 'slideIn 0.3s ease-out';
+
+                        setTimeout(() => {
+                            alertBox.style.animation = 'slideOut 0.3s ease-in';
+                            setTimeout(() => alertBox.style.display = 'none', 300);
+                        }, 5000);
+                    }
+                }
+
+                function closeNotification(alertId) {
+                    const alertBox = document.getElementById(alertId);
+                    if (alertBox) {
+                        alertBox.style.animation = 'slideOut 0.3s ease-in';
+                        setTimeout(() => alertBox.style.display = 'none', 300);
+                    }
+                }
+
+                function playNotificationSound() {
+                    const audio = new Audio('/sounds/notification.mp3');
+                    audio.play().catch(() => {});
+                }
+
+                function updateBalance(newBalance) {
+                    if (newBalance) {
+                        const balanceElem = document.querySelector('.balance');
+                        if (balanceElem) {
+                            balanceElem.textContent = newBalance.toFixed(2);
+                        }
+                    }
+                }
+
+                if (Notification.permission === "default") {
+                    Notification.requestPermission();
+                }
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    initNotifications();
+                });
+
+                window.addEventListener('beforeunload', () => {
+                    if (window.notificationConnection) {
+                        window.notificationConnection.stop();
+                    }
+                });
+                </text>
+        }
+    </script>
+
+    <style>
+        .notification-toast {
+            display: none;
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 10000;
+            width: 340px;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(10, 20, 30, 0.95));
+            border: 1px solid #00ff88;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.2), 0 0 20px rgba(0, 255, 136, 0.1);
+            backdrop-filter: blur(20px);
+        }
+
+        .notification-toast--sent {
+            border-color: #00b8ff;
+            background: linear-gradient(135deg, rgba(0, 184, 255, 0.1), rgba(10, 20, 30, 0.95));
+            box-shadow: 0 10px 40px rgba(0, 184, 255, 0.2), 0 0 20px rgba(0, 184, 255, 0.1);
+        }
+
+        .notification-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .notification-icon {
+            font-size: 22px;
+        }
+
+        .notification-title {
+            color: #00ff88;
+            font-weight: 700;
+            font-size: 15px;
+            flex: 1;
+        }
+
+        .notification-toast--sent .notification-title {
+            color: #00b8ff;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 22px;
+            line-height: 1;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+            .notification-close:hover {
+                opacity: 1;
+            }
+
+        .notification-text {
+            color: #eee;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .notification-balance {
+            color: #00ff88;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .notification-toast--sent .notification-balance {
+            color: #00b8ff;
+        }
+
+        @@keyframes slideIn {
+            from
+
+        {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        }
+
+        @@keyframes slideOut {
+            from
+
+        {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        to {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+
+        }
+    </style>
 </body>
 </html>

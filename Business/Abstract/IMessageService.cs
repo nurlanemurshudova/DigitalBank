@@ -7,9 +7,8 @@ namespace Business.Abstract
     {
         Task<IResult> SendMessageAsync(int senderId, int receiverId, string content);
         Task<IDataResult<List<Message>>> GetConversationAsync(int user1Id, int user2Id);
-        Task<IDataResult<int>> GetUnreadCountAsync(int userId);
+        Task<IResult> DeleteConversationAsync(int currentUserId, int otherUserId);
         Task<IResult> MarkAsReadAsync(int messageId);
-
         Task<IResult> AddAsync(Message entity);
         Task<IResult> Update(Message entity);
         Task<IResult> Delete(int id);

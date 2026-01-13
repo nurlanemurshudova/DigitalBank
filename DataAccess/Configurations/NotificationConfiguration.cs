@@ -15,10 +15,8 @@ namespace DataAccess.Configurations
         {
             builder.ToTable("Notifications");
 
-            // Primary Key
             builder.HasKey(n => n.Id);
 
-            // Properties
             builder.Property(n => n.Message)
                 .IsRequired()
                 .HasMaxLength(500);
@@ -29,21 +27,16 @@ namespace DataAccess.Configurations
             builder.Property(n => n.CreatedDate)
                 .HasDefaultValueSql("GETDATE()");
 
-            // Indexes
             builder.HasIndex(n => n.UserId);
             builder.HasIndex(n => n.IsRead);
             builder.HasIndex(n => n.CreatedDate);
 
-            // Composite Index (User + IsRead)
             builder.HasIndex(n => new { n.UserId, n.IsRead });
-            // Relationships
+
             builder.HasOne(n => n.User)
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(n => n.UserId)
-                .OnDelete(DeleteBehavior.Cascade); // Bildirişdə olar
-            // ============================================
-            // Relationships (ApplicationUserConfiguration-da təyin olunub)
-            // ============================================
+                .OnDelete(DeleteBehavior.Cascade); 
         }
     }
 }

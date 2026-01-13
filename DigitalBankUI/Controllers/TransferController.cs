@@ -1,8 +1,10 @@
 ﻿using Business.Abstract;
 using Business.Utilities;
 using ClosedXML.Excel;
+using Core.Results.Concrete;
 using DigitalBankUI.Hubs;
 using Entities.Concrete.Dtos;
+using Entities.Concrete.TableModels;
 using Entities.Concrete.TableModels.Membership;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
@@ -65,7 +67,7 @@ namespace DigitalBankUI.Controllers
             {
                 TempData["Success"] = result.Message;
 
-                if (result is Core.Results.Concrete.SuccessDataResult<TransferResultDto> dataResult)
+                if (result is SuccessDataResult<TransferResultDto> dataResult)
                 {
                     var transferData = dataResult.Data;
 
@@ -75,8 +77,23 @@ namespace DigitalBankUI.Controllers
                             .Group($"user_{transferData.ReceiverId}")
                             .SendAsync("ReceiveNotification", new
                             {
+                                type = "received",
                                 message = $"{transferData.SenderName} sizə {transferData.Amount:N2} AZN göndərdi",
-                                newBalance = transferData.NewBalance,
+                                amount = transferData.Amount,
+                                sender = transferData.SenderName,
+                                newBalance = transferData.ReceiverNewBalance,
+                                timestamp = DateTime.Now
+                            });
+
+                        await _notificationHub.Clients
+                            .Group($"user_{transferData.SenderId}")
+                            .SendAsync("ReceiveNotification", new
+                            {
+                                type = "sent",
+                                message = $"{transferData.ReceiverName} üçün {transferData.Amount:N2} AZN göndərildi",
+                                amount = transferData.Amount,
+                                receiver = transferData.ReceiverName,
+                                newBalance = transferData.SenderNewBalance,
                                 timestamp = DateTime.Now
                             });
                     }
@@ -120,7 +137,7 @@ namespace DigitalBankUI.Controllers
             }
 
             TempData["Error"] = "Transaction tarixçəsi yüklənmədi";
-            return View(new List<Entities.Concrete.TableModels.Transaction>());
+            return View(new List<Transaction>());
         }
 
         [HttpGet]

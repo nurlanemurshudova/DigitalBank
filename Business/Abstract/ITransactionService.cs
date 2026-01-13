@@ -13,7 +13,7 @@ namespace Business.Abstract
         Task<IResult> TransferMoneyAsync(int senderId, string receiverAccountNumber, decimal amount, string description);
 
         Task<IDataResult<List<Transaction>>> GetUserTransactionsAsync(int userId);
-        Task<IDataResult<List<Transaction>>> GetAllTransactionsAsync(); // Admin üçün
+        Task<IDataResult<List<Transaction>>> GetAllTransactionsAsync();
         Task<IDataResult<List<Transaction>>> GetTransactionsByDateAsync(DateTime? startDate, DateTime? endDate);
 
 

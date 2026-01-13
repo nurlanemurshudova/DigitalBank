@@ -21,6 +21,48 @@ namespace Business.Concrete
         {
             _uow = uow;
         }
+        public async Task<IDataResult<List<Notification>>> GetUnreadNotificationsAsync(int userId)
+        {
+            var notifications = await _uow.Repository<Notification>()
+                .Query()
+                .Where(n => n.UserId == userId && !n.IsRead)
+                .OrderByDescending(n => n.CreatedDate)
+                .ToListAsync();
+
+            return new SuccessDataResult<List<Notification>>(notifications);
+        }
+
+        public async Task<IResult> MarkAsReadAsync(int notificationId)
+        {
+            var notification = await _uow.Repository<Notification>().GetByIdAsync(notificationId);
+
+            if (notification == null)
+                return new ErrorResult("Bildiriş tapılmadı");
+
+            notification.IsRead = true;
+            _uow.Repository<Notification>().Update(notification);
+            await _uow.CommitAsync();
+
+            return new SuccessResult("Bildiriş oxundu");
+        }
+
+        public async Task<IResult> MarkAllAsReadAsync(int userId)
+        {
+            var notifications = await _uow.Repository<Notification>()
+                .Query()
+                .Where(n => n.UserId == userId && !n.IsRead)
+                .ToListAsync();
+
+            foreach (var notification in notifications)
+            {
+                notification.IsRead = true;
+                _uow.Repository<Notification>().Update(notification);
+            }
+
+            await _uow.CommitAsync();
+            return new SuccessResult("Bütün bildirişlər oxundu");
+        }
+    
         public async Task<IResult> AddAsync(Notification entity)
         {
             await _uow.Repository<Notification>().AddAsync(entity);

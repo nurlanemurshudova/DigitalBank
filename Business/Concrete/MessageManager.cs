@@ -4,6 +4,7 @@ using Core.Results.Abstract;
 using Core.Results.Concrete;
 using DataAccess.UnitOfWork;
 using Entities.Concrete.TableModels;
+using Entities.Concrete.TableModels.Membership;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -20,6 +21,31 @@ namespace Business.Concrete
         public MessageManager(IUnitOfWork uow)
         {
             _uow = uow;
+        }
+
+        public async Task<IResult> DeleteConversationAsync(int currentUserId, int otherUserId)
+        {
+            try
+            {
+                var messages = await _uow.Repository<Message>()
+                    .Query()
+                    .Where(m =>
+                        (m.SenderId == currentUserId && m.ReceiverId == otherUserId) ||
+                        (m.SenderId == otherUserId && m.ReceiverId == currentUserId))
+                    .ToListAsync();
+
+                foreach (var message in messages)
+                {
+                    _uow.Repository<Message>().Delete(message);
+                }
+
+                await _uow.CommitAsync();
+                return new SuccessResult("Söhbət hər iki tərəf üçün silindi");
+            }
+            catch (Exception ex)
+            {
+                return new ErrorResult($"Xəta: {ex.Message}");
+            }
         }
         public async Task<IResult> SendMessageAsync(int senderId, int receiverId, string content)
         {
@@ -47,26 +73,25 @@ namespace Business.Concrete
         {
             var messages = await _uow.Repository<Message>()
                 .Query()
-                .Include(m => m.Sender)
-                .Include(m => m.Receiver)
                 .Where(m => (m.SenderId == user1Id && m.ReceiverId == user2Id) ||
-                           (m.SenderId == user2Id && m.ReceiverId == user1Id))
+                            (m.SenderId == user2Id && m.ReceiverId == user1Id))
                 .OrderBy(m => m.CreatedDate)
+                .Select(m => new Message 
+                {
+                    Id = m.Id,
+                    Content = m.Content,
+                    SenderId = m.SenderId,
+                    ReceiverId = m.ReceiverId,
+                    CreatedDate = m.CreatedDate,
+                    IsRead = m.IsRead,
+                    Sender = new ApplicationUser { FirstName = m.Sender.FirstName, LastName = m.Sender.LastName },
+                    Receiver = new ApplicationUser { FirstName = m.Receiver.FirstName, LastName = m.Receiver.LastName }
+                })
                 .ToListAsync();
 
             return new SuccessDataResult<List<Message>>(messages);
         }
 
-
-        public async Task<IDataResult<int>> GetUnreadCountAsync(int userId)
-        {
-            var count = await _uow.Repository<Message>()
-                .Query()
-                .Where(m => m.ReceiverId == userId && !m.IsRead)
-                .CountAsync();
-
-            return new SuccessDataResult<int>(count);
-        }
 
         public async Task<IResult> MarkAsReadAsync(int messageId)
         {

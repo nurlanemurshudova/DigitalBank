@@ -1,21 +1,28 @@
 ﻿using Entities.Concrete.Dtos.Membership;
-using Entities.Concrete.TableModels;
 using Entities.Concrete.TableModels.Membership;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using System.Text.Json;
 
-namespace BookShopWeb.Areas.Dashboard.Controllers
+namespace DigitalBankUI.Areas.Dashboard.Controllers
 {
     [Area("Dashboard")]
     public class AccountController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
+
+        public AccountController(
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration,
+            IHttpClientFactory httpClientFactory)
         {
             _userManager = userManager;
-            _signInManager = signInManager;
+            _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
         }
 
         [HttpGet]
@@ -34,31 +41,45 @@ namespace BookShopWeb.Areas.Dashboard.Controllers
                 return View(model);
             }
 
-            var user = await _userManager.FindByEmailAsync(model.Email);
-
-            if (user == null)
+            try
             {
+                var httpClient = _httpClientFactory.CreateClient();
+                var apiUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7002";
+
+                var json = JsonSerializer.Serialize(model);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await httpClient.PostAsync($"{apiUrl}/api/Auth/admin/login", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    var result = JsonSerializer.Deserialize<JsonElement>(responseContent);
+
+                    if (result.TryGetProperty("token", out JsonElement tokenElement))
+                    {
+                        var token = tokenElement.GetString();
+
+                        Response.Cookies.Append("AdminAuthToken", token, new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            SameSite = SameSiteMode.Strict,
+                            Expires = DateTimeOffset.UtcNow.AddHours(3)
+                        });
+
+                        return RedirectToAction("Index", "Home", new { area = "Dashboard" });
+                    }
+                }
+
                 ViewBag.Message = "Email və ya şifrə yanlışdır";
                 return View(model);
             }
-
-            var roles = await _userManager.GetRolesAsync(user);
-
-            if (!roles.Contains("Admin") && !roles.Contains("SubAdmin"))
+            catch (Exception ex)
             {
-                ViewBag.Message = "Yalnız Admin və SubAdmin daxil ola bilər";
+                ViewBag.Message = "Xəta: " + ex.Message;
                 return View(model);
             }
-
-            var result = await _signInManager.PasswordSignInAsync(user, model.Password, isPersistent: false, lockoutOnFailure: false);
-
-            if (result.Succeeded)
-            {
-                return RedirectToAction("Index", "Home", new { area = "Dashboard" });
-            }
-
-            ViewBag.Message = "Email və ya şifrə yanlışdır";
-            return View(model);
         }
 
         [HttpGet]
@@ -88,26 +109,28 @@ namespace BookShopWeb.Areas.Dashboard.Controllers
                 if (!result.Succeeded)
                 {
                     ViewBag.Message = "Xəta baş verdi";
-
                     foreach (var item in result.Errors)
                     {
                         ModelState.AddModelError(item.Code, item.Description);
                     }
-
                     return View(model);
                 }
-                var roleResult = await _userManager.AddToRoleAsync(user, "SubAdmin");
-                return RedirectToAction("Login");
 
+                await _userManager.AddToRoleAsync(user, "SubAdmin");
+                return RedirectToAction("Login");
             }
             return View();
         }
 
-        public async Task<IActionResult> LogOut()
+        [HttpPost]
+        [Authorize]
+        public IActionResult LogOut()
         {
-            await _signInManager.SignOutAsync();
+            // Kukiləri silirik
+            Response.Cookies.Delete("AdminAuthToken");
+            Response.Cookies.Delete("AuthToken");
 
-            return RedirectToAction(nameof(Login));
+            return RedirectToAction("Login", "Account", new { area = "Dashboard" });
         }
     }
 }

@@ -66,7 +66,6 @@
                             <th>Göndərən</th>
                             <th>Alan</th>
                             <th>Məbləğ</th>
-                            <th>Status</th>
                             <th>Qeyd</th>
                         </tr>
                     </thead>
@@ -88,16 +87,6 @@
                                     <span class="badge badge-light p-2 shadow-sm text-success" style="font-size: 0.9rem;">
                                         @tx.Amount.ToString("N2") AZN
                                     </span>
-                                </td>
-                                <td class="text-center">
-                                    @if (tx.Status == TransactionStatus.Success)
-                                    {
-                                        <span class="badge badge-success badge-pill px-3">Uğurlu</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-danger badge-pill px-3">Uğursuz</span>
-                                    }
                                 </td>
                                 <td>
                                     <span class="small text-wrap">@(string.IsNullOrEmpty(tx.Description) ? "-" : tx.Description)</span>

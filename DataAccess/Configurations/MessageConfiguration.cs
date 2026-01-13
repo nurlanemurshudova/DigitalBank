@@ -15,10 +15,8 @@ namespace DataAccess.Configurations
         {
             builder.ToTable("Messages");
 
-            // Primary Key
             builder.HasKey(m => m.Id);
 
-            // Properties
             builder.Property(m => m.Content)
                 .IsRequired()
                 .HasMaxLength(1000);
@@ -29,27 +27,23 @@ namespace DataAccess.Configurations
             builder.Property(m => m.CreatedDate)
                 .HasDefaultValueSql("GETDATE()");
 
-            // Indexes
             builder.HasIndex(m => m.SenderId);
             builder.HasIndex(m => m.ReceiverId);
             builder.HasIndex(m => m.IsRead);
             builder.HasIndex(m => m.CreatedDate);
 
-            // Composite Index (Conversation: Sender + Receiver)
             builder.HasIndex(m => new { m.SenderId, m.ReceiverId });
-            // Relationships
+
             builder.HasOne(m => m.Sender)
                 .WithMany(u => u.SentMessages)
                 .HasForeignKey(m => m.SenderId)
-                .OnDelete(DeleteBehavior.Restrict); // Vacibdir: SQL Server zəncirvari silməyə icazə vermir
+                .OnDelete(DeleteBehavior.Restrict); 
 
             builder.HasOne(m => m.Receiver)
                 .WithMany(u => u.ReceivedMessages)
                 .HasForeignKey(m => m.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
-            // ============================================
-            // Relationships (ApplicationUserConfiguration-da təyin olunub)
-            // ============================================
+
         }
     }
 }

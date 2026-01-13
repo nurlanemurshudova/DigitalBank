@@ -11,15 +11,7 @@ namespace DataAccess.UnitOfWork
 {
     public interface IUnitOfWork : IDisposable
     {
-        //ITransactionDal TransactionDal { get; }
-        //IMessageDal MessageDal { get; }
-        //INotificationDal NotificationDal { get; }
-        //Task<int> CommitAsync();
 
-        //Task<int> SaveAsync();
-        //Task BeginTransactionAsync();
-        //Task CommitAsync();
-        //Task RollbackAsync();
         IBaseRepository<T> Repository<T>() where T : class;
         Task<int> CommitAsync();
         Task BeginTransactionAsync();

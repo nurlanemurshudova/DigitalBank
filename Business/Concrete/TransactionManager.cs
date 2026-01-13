@@ -96,16 +96,20 @@ namespace Business.Concrete
                 await _uow.CommitTransactionAsync();
 
                 return new SuccessDataResult<TransferResultDto>(
-                    new TransferResultDto
-                    {
-                        ReceiverId = receiver.Id,
-                        ReceiverName = $"{receiver.FirstName} {receiver.LastName}",
-                        NewBalance = receiver.Balance,
-                        Amount = amount,
-                        SenderName = $"{sender.FirstName} {sender.LastName}"
-                    },
-                    $"Pul köçürməsi uğurla tamamlandı. {receiver.FirstName} {receiver.LastName}-ə {amount:N2} AZN göndərildi"
-                );
+                   new TransferResultDto
+                   {
+                       SenderId = sender.Id,                             
+                       SenderName = $"{sender.FirstName} {sender.LastName}",
+                       SenderNewBalance = sender.Balance,                 
+
+                       ReceiverId = receiver.Id,
+                       ReceiverName = $"{receiver.FirstName} {receiver.LastName}",
+                       ReceiverNewBalance = receiver.Balance,           
+
+                       Amount = amount
+                   },
+                   $"Pul köçürməsi uğurla tamamlandı. {receiver.FirstName} {receiver.LastName}-ə {amount:N2} AZN göndərildi"
+               );
             }
             catch (Exception ex)
             {
@@ -118,25 +122,50 @@ namespace Business.Concrete
         {
             var transactions = await _uow.Repository<Transaction>()
                 .Query()
-                .Include(t => t.Sender)
-                .Include(t => t.Receiver)
                 .Where(t => t.SenderId == userId || t.ReceiverId == userId)
                 .OrderByDescending(t => t.CreatedDate)
+                .Select(t => new Transaction
+                {
+                    Id = t.Id,
+                    Amount = t.Amount,
+                    Description = t.Description,
+                    CreatedDate = t.CreatedDate,
+                    Status = t.Status,
+                    SenderId = t.SenderId,
+                    ReceiverId = t.ReceiverId,
+                    Sender = new ApplicationUser
+                    {
+                        FirstName = t.Sender.FirstName,
+                        LastName = t.Sender.LastName,
+                        AccountNumber = t.Sender.AccountNumber 
+                    },
+                    Receiver = new ApplicationUser
+                    {
+                        FirstName = t.Receiver.FirstName,
+                        LastName = t.Receiver.LastName,
+                        AccountNumber = t.Receiver.AccountNumber 
+                    }
+                })
                 .ToListAsync();
 
             return new SuccessDataResult<List<Transaction>>(transactions);
-
         }
 
 
         public async Task<IDataResult<List<Transaction>>> GetAllTransactionsAsync()
         {
-
             var transactions = await _uow.Repository<Transaction>()
                 .Query()
-                .Include(t => t.Sender)
-                .Include(t => t.Receiver)
                 .OrderByDescending(t => t.CreatedDate)
+                .Select(t => new Transaction
+                {
+                    Id = t.Id,
+                    Amount = t.Amount,
+                    SenderId = t.SenderId,
+                    ReceiverId = t.ReceiverId,
+                    Sender = new ApplicationUser { FirstName = t.Sender.FirstName, LastName = t.Sender.LastName },
+                    Receiver = new ApplicationUser { FirstName = t.Receiver.FirstName, LastName = t.Receiver.LastName }
+                })
                 .ToListAsync();
 
             return new SuccessDataResult<List<Transaction>>(transactions);

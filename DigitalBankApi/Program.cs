@@ -3,6 +3,7 @@ using Business.Abstract;
 using Business.Concrete;
 using DataAccess.Context;
 using DataAccess.UnitOfWork;
+using DigitalBankApi.Models;
 using Entities.Concrete.TableModels.Membership;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -29,7 +30,8 @@ namespace DigitalBankApi
                 builder.Services.AddScoped<ITransactionService, TransactionManager>();
                 builder.Services.AddScoped<IMessageService, MessageManager>();
                 builder.Services.AddScoped<INotificationService, NotificationManager>();
-
+                // Stripe Configuration
+                builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
                 // ⭐ JWT Authentication
                 builder.Services.AddAuthentication(options =>
                 {
@@ -60,7 +62,7 @@ namespace DigitalBankApi
                 {
                     options.AddPolicy("AllowMVC", policy =>
                     {
-                        policy.WithOrigins("https://localhost:7001", "http://localhost:5001") 
+                        policy.WithOrigins("https://localhost:7220")
                               .AllowAnyMethod()
                               .AllowAnyHeader()
                               .AllowCredentials();

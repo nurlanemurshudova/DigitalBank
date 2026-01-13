@@ -24,7 +24,7 @@
                 <span>⚙️</span> <span>Ayarlar</span>
             </a>
             <a asp-controller="Transfer" asp-action="History" class="nav__item">
-                <span>⚙️</span> <span>Tarixce</span>
+                <span>📜</span> <span>Tarixçə</span>
             </a>
         </nav>
     </aside>
@@ -56,23 +56,29 @@
                     }
 
                     <!-- Avatar Upload -->
-                    <div class="avatar-section">
-                        <div class="avatar-preview">
-                            @if (!string.IsNullOrEmpty(Model.AvatarUrl))
-                            {
-                                <img src="@Model.AvatarUrl" alt="Avatar" class="avatar-img" />
-                            }
-                            else
-                            {
-                                <div class="avatar-placeholder">
-                                    @Model.FirstName?.Substring(0, 1)@Model.LastName?.Substring(0, 1)
-                                </div>
-                            }
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 1.25rem; margin-bottom: 2rem; padding: 2rem 1.5rem; background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%); border-radius: 12px;">
+                        <!-- Avatar -->
+                        @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                        {
+                            <img src="@Model.AvatarUrl" alt="Avatar" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+                        }
+                        else
+                        {
+                            <div style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem; font-weight: 700; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                                @Model.FirstName?.Substring(0, 1)@Model.LastName?.Substring(0, 1)
+                            </div>
+                        }
+
+                        <!-- Name & Email -->
+                        <div style="text-align: center;">
+                            <h4 style="margin: 0 0 0.25rem 0; font-size: 1.5rem; font-weight: 700;">@Model.FirstName @Model.LastName</h4>
+                            <p style="margin: 0; color: #666; font-size: 0.95rem;">@Model.Email</p>
                         </div>
 
-                        <div class="avatar-actions">
-                            <form asp-action="UploadAvatar" method="post" enctype="multipart/form-data" id="avatarForm">
-                                <label class="btn btn--soft" for="avatarInput">
+                        <!-- Buttons -->
+                        <div style="display: flex; gap: 0.5rem;">
+                            <form asp-action="UploadAvatar" method="post" enctype="multipart/form-data" id="avatarForm" style="margin: 0;">
+                                <label class="btn btn--soft" for="avatarInput" style="cursor: pointer; margin: 0; padding: 0.5rem 1rem; font-size: 0.85rem;">
                                     📷 Şəkil seç
                                 </label>
                                 <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display: none;" onchange="document.getElementById('avatarForm').submit()" />
@@ -80,8 +86,8 @@
 
                             @if (!string.IsNullOrEmpty(Model.AvatarUrl))
                             {
-                                <form asp-action="DeleteAvatar" method="post" style="display: inline;">
-                                    <button type="submit" class="btn btn--ghost" onclick="return confirm('Şəkli silmək istədiyinizdən əminsiniz?')">
+                                <form asp-action="DeleteAvatar" method="post" style="margin: 0;">
+                                    <button type="submit" class="btn btn--ghost" onclick="return confirm('Şəkli silmək istədiyinizdən əminsiniz?')" style="margin: 0; padding: 0.5rem 1rem; font-size: 0.85rem;">
                                         🗑️ Sil
                                     </button>
                                 </form>
@@ -113,13 +119,8 @@
                             </label>
 
                             <label class="field">
-                                <span class="field__label">Email (dəyişə bilməz)</span>
+                                <span class="field__label">Email</span>
                                 <input class="input" type="email" value="@Model.Email" disabled />
-                            </label>
-
-                            <label class="field">
-                                <span class="field__label">Hesab Nömrəsi</span>
-                                <input class="input" type="text" value="@Model.AccountNumber" disabled />
                             </label>
                         </div>
 
@@ -158,7 +159,7 @@
                     <hr style="border-color: rgba(255,255,255,0.1); margin: 1.5rem 0;" />
 
                     <!-- Account Info -->
-                    <div class="info-list">
+                    @* <div class="info-list">
                         <div class="info-item">
                             <span class="info-label">Balans:</span>
                             <span class="info-value">@Model.Balance.ToString("N2") AZN</span>
@@ -175,9 +176,36 @@
                                 @(Model.EmailConfirmed ? "✅ Təsdiqlənib" : "❌ Təsdiqlənməyib")
                             </span>
                         </div>
-                    </div>
+                    </div> *@
                 </div>
             </div>
         </div>
     </section>
 </section>
+
+<style>
+    .alert-success {
+        padding: 1rem;
+        background: #d1fae5;
+        color: #065f46;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .alert-error {
+        padding: 1rem;
+        background: #fee2e2;
+        color: #991b1b;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .btn--soft:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .btn--ghost:hover {
+        transform: translateY(-1px);
+    }
+</style>
