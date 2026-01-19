@@ -1,0 +1,244 @@
+﻿@model ApplicationUser
+
+@{
+    ViewData["Title"] = "Tənzimləmələr";
+}
+
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-cogs"></i> Parametrlər
+        </h1>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i> @TempData["Success"]
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle"></i> @TempData["Error"]
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Sol Panel - Profil Məlumatları -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user-edit"></i> Profil Məlumatları
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form asp-action="UpdateProfile" method="post">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="firstName">
+                                        <i class="fas fa-user"></i> Ad <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="firstName" name="firstName"
+                                           value="@Model.FirstName" placeholder="Adınız" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="lastName">
+                                        <i class="fas fa-user"></i> Soyad <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="lastName" name="lastName"
+                                           value="@Model.LastName" placeholder="Soyadınız" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">
+                                <i class="fas fa-envelope"></i> Email
+                            </label>
+                            <input type="email" class="form-control" id="email" value="@Model.Email"
+                                   readonly style="background-color: #e9ecef; cursor: not-allowed;">
+                            <small class="form-text text-muted">Email dəyişdirilə bilməz</small>
+                        </div>
+
+
+                        <div class="form-group mb-0">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Məlumatları Yadda Saxla
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Şifrə Dəyişdirmə -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">
+                        <i class="fas fa-lock"></i> Şifrə Dəyişdir
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form asp-action="ChangePassword" method="post">
+                        <div class="form-group">
+                            <label for="currentPassword">
+                                <i class="fas fa-key"></i> Cari Şifrə <span class="text-danger">*</span>
+                            </label>
+                            <input type="password" class="form-control" id="currentPassword"
+                                   name="currentPassword" placeholder="••••••••" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="newPassword">
+                                        <i class="fas fa-lock"></i> Yeni Şifrə <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="password" class="form-control" id="newPassword"
+                                           name="newPassword" placeholder="••••••••" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="confirmPassword">
+                                        <i class="fas fa-lock"></i> Yeni Şifrə (Təkrar) <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="password" class="form-control" id="confirmPassword"
+                                           name="confirmPassword" placeholder="••••••••" required>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted mb-3">
+                            <i class="fas fa-info-circle"></i> Şifrə ən azı 6 simvol olmalıdır
+                        </small>
+                        <div class="form-group mb-0">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-sync-alt"></i> Şifrəni Dəyişdir
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ Panel -->
+        <div class="col-lg-4">
+            <!-- Profil Şəkli -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-image"></i> Profil Şəkli
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                        {
+                            <img src="@Model.AvatarUrl" alt="Avatar" class="img-fluid rounded-circle"
+                                 style="width: 180px; height: 180px; object-fit: cover; border: 5px solid #4e73df;">
+                        }
+                        else
+                        {
+                            <img src="~/admin/img/undraw_profile.svg" alt="Default Avatar"
+                                 class="img-fluid rounded-circle" style="width: 180px; height: 180px;">
+                        }
+                    </div>
+
+                    <h5 class="mt-3 mb-1">@Model.FirstName @Model.LastName</h5>
+                    <p class="text-muted mb-3">
+                        <i class="fas fa-envelope"></i> @Model.Email
+                    </p>
+
+                    <!-- Şəkil Yüklə -->
+                    <form asp-action="UploadAvatar" method="post" enctype="multipart/form-data">
+                        <div class="custom-file mb-3">
+                            <input type="file" class="custom-file-input" id="avatar" name="avatar"
+                                   accept="image/*" required onchange="previewImage(this)">
+                            <label class="custom-file-label" for="avatar">Şəkil seç...</label>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm btn-block">
+                            <i class="fas fa-upload"></i> Yüklə
+                        </button>
+                    </form>
+
+                    @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                    {
+                        <form asp-action="DeleteAvatar" method="post" class="mt-2"
+                              onsubmit="return confirm('Profil şəklini silmək istədiyinizdən əminsiniz?')">
+                            <button type="submit" class="btn btn-danger btn-sm btn-block">
+                                <i class="fas fa-trash"></i> Şəkli Sil
+                            </button>
+                        </form>
+                    }
+
+                    <small class="form-text text-muted mt-2">
+                        JPG, PNG, GIF (Maks: 5MB)
+                    </small>
+                </div>
+            </div>
+
+            <!-- Hesab Məlumatları -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-info-circle"></i> Hesab Məlumatları
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <strong><i class="fas fa-user-shield"></i> Rol:</strong><br>
+                            <span class="badge badge-primary">
+                                @(User.IsInRole("Admin") ? "Admin" : "Subadmin")
+                            </span>
+                        </li>
+                        <li class="mb-2">
+                            <strong><i class="fas fa-calendar-alt"></i> Qeydiyyat:</strong><br>
+                            @Model.RegisterDate.ToString("dd.MM.yyyy HH:mm")
+                        </li>
+                        @if (Model.UpdatedDate.HasValue)
+                        {
+                            <li class="mb-0">
+                                <strong><i class="fas fa-sync"></i> Son yeniləmə:</strong><br>
+                                @Model.UpdatedDate.Value.ToString("dd.MM.yyyy HH:mm")
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $('.custom-file-input').on('change', function () {
+            let fileName = $(this).val().split('\\').pop();
+            $(this).next('.custom-file-label').addClass("selected").html(fileName);
+        });
+
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        setTimeout(function () {
+            $('.alert').fadeOut('slow');
+        }, 5000);
+    </script>
+}
+

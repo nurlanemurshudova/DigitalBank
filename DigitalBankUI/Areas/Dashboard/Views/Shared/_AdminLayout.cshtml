@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@inject UserManager<ApplicationUser> UserManager
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -121,29 +122,28 @@
                             </div>
                         </li>
 
+                        @{
+                            var currentUser = await UserManager.GetUserAsync(User);
+                            var userName = currentUser != null ? $"{currentUser.FirstName} {currentUser.LastName}" : "Admin";
+                            var userAvatar = currentUser?.AvatarUrl ?? "~/admin/img/undraw_profile.svg";
+                        }
                         <div class="topbar-divider d-none d-sm-block"></div>
 
                         <!-- Nav Item - User Information -->
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">Douglas McGee</span>
-                                <img class="img-profile rounded-circle"
-                                     src="~/admin/img/undraw_profile.svg">
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">@userName</span>
+                                <img class="img-profile rounded-circle" src="@userAvatar"
+                                     style="width: 40px; height: 40px; object-fit: cover;">
                             </a>
                             <!-- Dropdown - User Information -->
                             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
                                  aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="#">
-                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Profile
-                                </a>
-
-                                @* <a class="dropdown-item" asp-area="Dashboard" asp-controller="Settings" asp-action="Index">
+                                <a class="dropdown-item" asp-area="Dashboard" asp-controller="Settings" asp-action="Index">
                                     <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Settings
-                                </a> *@
-
+                                </a>
                                 <div class="dropdown-divider"></div>
                                 <form asp-area="Dashboard" asp-controller="Account" asp-action="Logout" method="post">
                                     <button type="submit" class="dropdown-item">

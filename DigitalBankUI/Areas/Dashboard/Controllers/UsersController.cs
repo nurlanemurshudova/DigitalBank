@@ -26,21 +26,6 @@ namespace DigitalBankUI.Areas.Dashboard.Controllers
         }
 
 
-        [HttpPost]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var user = await _userManager.FindByIdAsync(id.ToString());
-            if (user == null)
-                return Json(new { success = false, message = "İstifadəçi tapılmadı" });
-
-            var result = await _userManager.DeleteAsync(user);
-
-            if (result.Succeeded)
-            {
-                return Json(new { success = true, message = "İstifadəçi tamamilə silindi" });
-            }
-
-            return Json(new { success = false, message = "Xəta baş verdi" });
-        }
+        
     }
 }

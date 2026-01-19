@@ -26,7 +26,6 @@
                             <th>Hesab Nömrəsi</th>
                             <th>Balans</th>
                             <th>Qeydiyyat</th>
-                            <th>Əməliyyat</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -61,19 +60,7 @@
                                     </span>
                                 </td>
                                 <td>@user.RegisterDate.ToString("dd.MM.yyyy")</td>
-                                <td class="text-center">
-                                    @if (user.Id != currentUser?.Id)
-                                    {
-                                        @* Appointment-dəki kimi atributlar istifadə olunur *@
-                                        <a item-value="@user.Id" item-title="@user.FirstName @user.LastName" class="btnDelete text-danger" style="cursor:pointer;">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-light">Siz</span>
-                                    }
-                                </td>
+
                             </tr>
                         }
                     </tbody>
@@ -83,51 +70,3 @@
     </div>
 </div>
 
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        // Appointment-dəki eyni məntiq və ID götürmə üsulu
-        $(".btnDelete").click(function (e) {
-            Swal.fire({
-                title: 'Əminsən?',
-                text: "İstifadəçi silinəcək və bu geri döndərə bilməyəcəksiz!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonText: "Ləğv et",
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Bəli, sil'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Appointment-dəki kimi atribut sırası ilə ID və Title götürülür
-                    let itemId = e.currentTarget.attributes[0].value;
-                    let itemTitle = e.currentTarget.attributes[1].value;
-
-                    $.ajax({
-                        method: "POST",
-                        url: "/Dashboard/Users/Delete", 
-                        data: {
-                            id: itemId
-                        },
-                        success: function (response) {
-                            if (response.success) {
-                                Swal.fire({
-                                    title: 'Silindi!',
-                                    text: "'" + itemTitle + "' uğurla silindi",
-                                    icon: 'success',
-                                }).then(() => {
-                                    location.reload(); // Səhifəni yeniləyir
-                                });
-                            } else {
-                                Swal.fire('Xəta!', response.message, 'error');
-                            }
-                        },
-                        error: function() {
-                            Swal.fire('Xəta!', 'Serverlə əlaqə kəsildi', 'error');
-                        }
-                    });
-                }
-            })
-        })
-    </script>
-}

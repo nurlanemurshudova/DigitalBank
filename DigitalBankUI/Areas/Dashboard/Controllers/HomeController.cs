@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BookShopWeb.Areas.Dashboard.Controllers
+namespace DigitalBankUI.Areas.Dashboard.Controllers
 {
     [Area("Dashboard")]
     [Authorize(Roles = "Admin, SubAdmin")]
