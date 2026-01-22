@@ -152,7 +152,7 @@
     <script>
         // Hesab nömrəsinə avtomatik tire əlavə et
         document.querySelector('input[name="receiverAccountNumber"]').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, ''); // Yalnız rəqəmlər
+            let value = e.target.value.replace(/\D/g, ''); 
             if (value.length > 16) value = value.substring(0, 16);
 
             // 4-4-4-4 formatında tire əlavə et

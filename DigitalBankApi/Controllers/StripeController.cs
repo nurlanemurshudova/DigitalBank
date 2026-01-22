@@ -7,6 +7,7 @@ using Stripe.Checkout;
 using Business.Abstract;
 using Entities.Concrete.TableModels;
 using DigitalBankApi.Models;
+using Entities.Concrete.Dtos;
 
 namespace DigitalBankApi.Controllers
 {
@@ -16,136 +17,66 @@ namespace DigitalBankApi.Controllers
     public class StripeController : ControllerBase
     {
         private readonly IConfiguration _configuration;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ITransactionService _transactionService; 
+        private readonly IStripeService _stripeService;
 
         public StripeController(
             IConfiguration configuration,
-            UserManager<ApplicationUser> userManager,
-            ITransactionService transactionService) 
+            IStripeService stripeService)
         {
             _configuration = configuration;
-            _userManager = userManager;
-            _transactionService = transactionService; 
+            _stripeService = stripeService;
 
             StripeConfiguration.ApiKey = _configuration["Stripe:SecretKey"];
         }
 
         [HttpPost("create-checkout-session")]
-        public async Task<IActionResult> CreateCheckoutSession([FromBody] CheckoutRequest request)
+        [Authorize] 
+        public async Task<IActionResult> CreateCheckoutSession([FromBody] CheckoutRequestDto request)
         {
-            if (request.Amount <= 0)
+            var frontendUrl = _configuration["AppSettings:FrontendUrl"];
+            var successUrl = $"{frontendUrl}/Home/PaymentSuccess?session_id={{CHECKOUT_SESSION_ID}}";
+            var cancelUrl = $"{frontendUrl}/Home/PaymentCancel";
+
+            var result = await _stripeService.CreateCheckoutSessionAsync(
+                request.UserId,
+                request.Amount,
+                successUrl,
+                cancelUrl
+            );
+
+            if (!result.IsSuccess)
             {
-                return BadRequest(new { success = false, message = "Məbləğ 0-dan böyük olmalıdır" });
+                return BadRequest(new { success = false, message = result.Message });
             }
 
-            if (request.UserId <= 0)
+            return Ok(new
             {
-                return BadRequest(new { success = false, message = "User ID tələb olunur" });
-            }
-
-            try
-            {
-                var options = new SessionCreateOptions
-                {
-                    PaymentMethodTypes = new List<string> { "card" },
-                    LineItems = new List<SessionLineItemOptions>
-                    {
-                        new SessionLineItemOptions
-                        {
-                            PriceData = new SessionLineItemPriceDataOptions
-                            {
-                                Currency = "usd",
-                                ProductData = new SessionLineItemPriceDataProductDataOptions
-                                {
-                                    Name = "Balans artırma",
-                                    Description = $"{request.Amount} AZN hesaba əlavə ediləcək"
-                                },
-                                UnitAmount = (long)(request.Amount * 100)
-                            },
-                            Quantity = 1
-                        }
-                    },
-                    Mode = "payment",
-                    SuccessUrl = $"{_configuration["AppSettings:FrontendUrl"]}/Home/PaymentSuccess?session_id={{CHECKOUT_SESSION_ID}}",
-                    CancelUrl = $"{_configuration["AppSettings:FrontendUrl"]}/Home/PaymentCancel",
-                    Metadata = new Dictionary<string, string>
-                    {
-                        { "user_id", request.UserId.ToString() },
-                        { "amount", request.Amount.ToString() }
-                    }
-                };
-
-                var service = new SessionService();
-                var session = await service.CreateAsync(options);
-
-                return Ok(new
-                {
-                    success = true,
-                    sessionId = session.Id,
-                    url = session.Url
-                });
-            }
-            catch (StripeException ex)
-            {
-                return BadRequest(new { success = false, message = $"Stripe xətası: {ex.Message}" });
-            }
+                success = true,
+                url = result.Data,
+                message = result.Message
+            });
         }
 
-
         [HttpPost("webhook")]
-        [AllowAnonymous]
+        [AllowAnonymous] 
         public async Task<IActionResult> StripeWebhook()
         {
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-            var stripeSignature = Request.Headers["Stripe-Signature"].ToString();
+            var signature = Request.Headers["Stripe-Signature"].ToString();
+            var webhookSecret = _configuration["Stripe:WebhookSecret"];
 
-            try
+            var result = await _stripeService.ProcessWebhookEventAsync(
+                json,
+                signature,
+                webhookSecret
+            );
+
+            if (!result.IsSuccess)
             {
-                var webhookSecret = _configuration["Stripe:WebhookSecret"];
-
-                if (string.IsNullOrEmpty(webhookSecret))
-                    throw new Exception("WebhookSecret konfiqurasiyada tapılmadı!");
-
-                var stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, webhookSecret);
-
-                if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
-                {
-                    var session = stripeEvent.Data.Object as Session;
-
-                    if (session != null && session.PaymentStatus == "paid")
-                    {
-                        var userId = int.Parse(session.Metadata["user_id"]);
-                        var amount = decimal.Parse(session.Metadata["amount"]);
-
-                        var user = await _userManager.FindByIdAsync(userId.ToString());
-                        if (user != null)
-                        {
-
-                            user.Balance += amount;
-                            await _userManager.UpdateAsync(user);
-
-                            var transaction = new Transaction
-                            {
-                                SenderId = userId,     
-                                ReceiverId = userId,      
-                                Amount = amount,
-                                Description = $"Balans artırma",
-                                Status = TransactionStatus.Success
-                            };
-
-                            await _transactionService.AddAsync(transaction);
-
-                        }
-                    }
-                }
-
-                return Ok();
+                return BadRequest(new { error = result.Message });
             }
-            catch (StripeException ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
+
+            return Ok(new { message = result.Message });
         }
     }
 }

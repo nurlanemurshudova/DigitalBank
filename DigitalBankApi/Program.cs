@@ -30,6 +30,7 @@ namespace DigitalBankApi
                 builder.Services.AddScoped<ITransactionService, TransactionManager>();
                 builder.Services.AddScoped<IMessageService, MessageManager>();
                 builder.Services.AddScoped<INotificationService, NotificationManager>();
+                builder.Services.AddScoped<IStripeService, StripeManager>();
                 // Stripe Configuration
                 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
                 // ⭐ JWT Authentication
