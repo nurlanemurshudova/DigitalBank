@@ -1,11 +1,12 @@
-﻿
-using Business.Abstract;
+﻿using Business.Abstract;
 using Business.Concrete;
 using DataAccess.Context;
 using DataAccess.UnitOfWork;
-using DigitalBankApi.Models;
+using Entities.Concrete.Dtos;
 using Entities.Concrete.TableModels.Membership;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -22,15 +23,28 @@ namespace DigitalBankApi
 
                 builder.Services.AddControllers();
 
-                builder.Services.AddDbContext<ApplicationDbContext>()
-                    .AddIdentity<ApplicationUser, ApplicationRole>()
-                    .AddEntityFrameworkStores<ApplicationDbContext>();
+                builder.Services.AddDbContext<ApplicationDbContext>(options =>
+
+            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+
+                builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
+
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+
+                .AddDefaultTokenProviders();
+                //builder.Services.AddDbContext<ApplicationDbContext>()
+                //    .AddIdentity<ApplicationUser, ApplicationRole>()
+                //    .AddEntityFrameworkStores<ApplicationDbContext>();
 
                 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
                 builder.Services.AddScoped<ITransactionService, TransactionManager>();
                 builder.Services.AddScoped<IMessageService, MessageManager>();
                 builder.Services.AddScoped<INotificationService, NotificationManager>();
                 builder.Services.AddScoped<IStripeService, StripeManager>();
+                builder.Services.AddScoped<IAccountService, AccountManager>();
+                builder.Services.AddScoped<IUserProfileService, UserProfileManager>();
                 // Stripe Configuration
                 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
                 // ⭐ JWT Authentication

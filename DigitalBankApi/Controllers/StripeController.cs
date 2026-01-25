@@ -6,7 +6,6 @@ using Stripe;
 using Stripe.Checkout;
 using Business.Abstract;
 using Entities.Concrete.TableModels;
-using DigitalBankApi.Models;
 using Entities.Concrete.Dtos;
 
 namespace DigitalBankApi.Controllers
@@ -30,7 +29,7 @@ namespace DigitalBankApi.Controllers
         }
 
         [HttpPost("create-checkout-session")]
-        [Authorize] 
+        [Authorize]
         public async Task<IActionResult> CreateCheckoutSession([FromBody] CheckoutRequestDto request)
         {
             var frontendUrl = _configuration["AppSettings:FrontendUrl"];
@@ -49,16 +48,11 @@ namespace DigitalBankApi.Controllers
                 return BadRequest(new { success = false, message = result.Message });
             }
 
-            return Ok(new
-            {
-                success = true,
-                url = result.Data,
-                message = result.Message
-            });
+            return Ok(new { success = true, url = result.Data, message = result.Message });
         }
 
         [HttpPost("webhook")]
-        [AllowAnonymous] 
+        [AllowAnonymous]
         public async Task<IActionResult> StripeWebhook()
         {
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();

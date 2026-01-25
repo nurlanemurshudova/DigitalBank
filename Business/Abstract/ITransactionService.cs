@@ -16,8 +16,9 @@ namespace Business.Abstract
         Task<IDataResult<List<Transaction>>> GetAllTransactionsAsync();
         Task<IDataResult<List<Transaction>>> GetTransactionsByDateAsync(DateTime? startDate, DateTime? endDate);
 
+        Task<IDataResult<byte[]>> ExportTransactionsToPdfAsync(int userId,List<Transaction> transactions);
 
-
+        Task<IDataResult<byte[]>> ExportTransactionsToExcelAsync(int userId, List<Transaction> transactions);
         Task<IResult> AddAsync(Transaction entity);
         Task<IResult>  Update(Transaction entity);
         Task<IResult> Delete(int id);

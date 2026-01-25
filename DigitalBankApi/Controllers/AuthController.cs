@@ -1,9 +1,6 @@
-﻿using Business.Utilities;
+﻿using Business.Abstract;
 using Entities.Concrete.Dtos.Membership;
-using Entities.Concrete.TableModels.Membership;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace DigitalBankApi.Controllers
 {
@@ -11,15 +8,11 @@ namespace DigitalBankApi.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IConfiguration _configuration;
+        private readonly IAccountService _authService;
 
-        public AuthController(
-            UserManager<ApplicationUser> userManager,
-            IConfiguration configuration)
+        public AuthController(IAccountService authService)
         {
-            _userManager = userManager;
-            _configuration = configuration;
+            _authService = authService;
         }
 
         [HttpPost("user/login")]
@@ -27,145 +20,31 @@ namespace DigitalBankApi.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { message = "Model validation failed", errors = ModelState });
+                return BadRequest(new
+                { success = false, message = "Model validation failed", errors = ModelState });
             }
-
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
+            var result = await _authService.UserLoginAsync(model);
+            if (!result.IsSuccess)
             {
-                return Unauthorized(new { message = "Email və ya şifrə yanlışdır" });
+                return Unauthorized(new
+                { success = false, message = result.Message });
             }
-
-            var roles = await _userManager.GetRolesAsync(user);
-            if (roles.Contains("Admin") || roles.Contains("SubAdmin"))
-            {
-                return BadRequest(new { message = "Bu hesabla giriş edilə bilməz" });
-            }
-
-            var token = JwtHelper.GenerateToken(user, roles.ToList(), _configuration);
-
-            return Ok(new
-            {
-                token,
-                user = new
-                {
-                    user.Id,
-                    user.Email,
-                    user.FirstName,
-                    user.LastName,
-                    user.AccountNumber,
-                    user.Balance,
-                    user.Address,
-                    user.Age
-                },
-                roles
-            });
+            return Ok(new { success = true, token = result.Data.Token, user = result.Data.User, roles = result.Data.Roles, message = result.Message });
         }
-
 
         [HttpPost("admin/login")]
         public async Task<IActionResult> AdminLogin([FromBody] Login model)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { message = "Model validation failed", errors = ModelState });
+                return BadRequest(new { success = false, message = "Model validation failed", errors = ModelState });
             }
-
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
+            var result = await _authService.AdminLoginAsync(model);
+            if (!result.IsSuccess)
             {
-                return Unauthorized(new { message = "Email və ya şifrə yanlışdır" });
+                return Unauthorized(new { success = false, message = result.Message });
             }
-
-            var roles = await _userManager.GetRolesAsync(user);
-            if (!roles.Contains("Admin") && !roles.Contains("SubAdmin"))
-            {
-                return Unauthorized(new { message = "Admin icazəniz yoxdur" });
-            }
-
-            var token = JwtHelper.GenerateToken(user, roles.ToList(), _configuration);
-
-            return Ok(new
-            {
-                token,
-                user = new
-                {
-                    user.Id,
-                    user.Email,
-                    user.FirstName,
-                    user.LastName
-                },
-                roles
-            });
-        }
-
-
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] Register model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { message = "Model validation failed", errors = ModelState });
-            }
-
-            var existingUser = await _userManager.FindByEmailAsync(model.Email);
-            if (existingUser != null)
-            {
-                return BadRequest(new { message = "Bu email artıq qeydiyyatdan keçib" });
-            }
-
-            string accountNumber;
-            do
-            {
-                accountNumber = AccountNumberHelper.GenerateAccountNumber();
-            }
-            while (await _userManager.Users.AnyAsync(u => u.AccountNumber == accountNumber));
-
-            var user = new ApplicationUser
-            {
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                Address = model.Address,
-                Age = model.Age,
-                Balance = 0,
-                Email = model.Email,
-                UserName = model.Email,
-                AccountNumber = accountNumber,
-                EmailConfirmed = true
-            };
-
-            var result = await _userManager.CreateAsync(user, model.Password);
-
-            if (!result.Succeeded)
-            {
-                return BadRequest(new
-                {
-                    message = "Qeydiyyat uğursuz",
-                    errors = result.Errors.Select(e => e.Description)
-                });
-            }
-
-            await _userManager.AddToRoleAsync(user, "User");
-
-            var roles = await _userManager.GetRolesAsync(user);
-            var token = JwtHelper.GenerateToken(user, roles.ToList(), _configuration);
-
-            return Ok(new
-            {
-                message = "Qeydiyyat uğurla tamamlandı",
-                token,
-                user = new
-                {
-                    user.Id,
-                    user.Email,
-                    user.FirstName,
-                    user.LastName,
-                    user.AccountNumber,
-                    user.Balance,
-                    user.Address,
-                    user.Age
-                }
-            });
+            return Ok(new { success = true, token = result.Data.Token, user = result.Data.User, roles = result.Data.Roles, message = result.Message });
         }
     }
 }

@@ -12,14 +12,11 @@ namespace DigitalBankUI.Controllers
     public class ChatController : Controller
     {
         private readonly IMessageService _messageService;
-        private readonly UserManager<ApplicationUser> _userManager;
 
         public ChatController(
-            IMessageService messageService,
-            UserManager<ApplicationUser> userManager)
+            IMessageService messageService)
         {
             _messageService = messageService;
-            _userManager = userManager;
         }
 
         public async Task<IActionResult> Index()
@@ -30,15 +27,16 @@ namespace DigitalBankUI.Controllers
 
             int currentUserId = int.Parse(currentUserIdClaim);
 
-            var allUsersInUserRole = await _userManager.GetUsersInRoleAsync("User");
+            var result = await _messageService.GetAvailableUsersAsync(currentUserId);
 
-            var users = allUsersInUserRole
-                .Where(u => u.Id != currentUserId)
-                .OrderBy(u => u.FirstName)
-                .ToList();
+            if (!result.IsSuccess)
+            {
+                TempData["Error"] = result.Message;
+                return View(new List<ApplicationUser>());
+            }
 
             ViewBag.CurrentUserId = currentUserId;
-            return View(users);
+            return View(result.Data);
         }
 
         [HttpGet]

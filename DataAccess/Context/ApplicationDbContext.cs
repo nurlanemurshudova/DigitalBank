@@ -14,11 +14,14 @@ namespace DataAccess.Context
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, int, ApplicationUserClaim, ApplicationUserRole, ApplicationUserLogin, ApplicationRoleClaim, ApplicationUserToken>
     {
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
-            optionsBuilder.UseSqlServer("Data Source = Localhost; Initial Catalog = DigitalBankDb; Integrated Security= true;Encrypt = false;");
+
         }
+        //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        //{
+        //    optionsBuilder.UseSqlServer("Data Source = Localhost; Initial Catalog = DigitalBankDb; Integrated Security= true;Encrypt = false;");
+        //}
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,4 +1,5 @@
-﻿using Business.Utilities;
+﻿using Business.Abstract;
+using Business.Utilities;
 using Entities.Concrete.Dtos.Membership;
 using Entities.Concrete.TableModels.Membership;
 using Microsoft.AspNetCore.Authorization;
@@ -12,18 +13,18 @@ namespace DigitalBankUI.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IAccountService _accountService;
 
         public AccountController(
-            UserManager<ApplicationUser> userManager,
             IConfiguration configuration,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            IAccountService accountService)
         {
-            _userManager = userManager;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
+            _accountService = accountService;
         }
 
         [HttpGet]
@@ -90,8 +91,6 @@ namespace DigitalBankUI.Controllers
 
             Response.Cookies.Delete("AdminAuthToken");
             Response.Cookies.Delete("AuthToken");
-
-
             return RedirectToAction("Login", "Account");
         }
 
@@ -107,66 +106,18 @@ namespace DigitalBankUI.Controllers
         public async Task<IActionResult> Register(Register model)
         {
             if (!ModelState.IsValid)
+                return View(model);
+
+            var result = await _accountService.RegisterUserAsync(model);
+
+            if (!result.IsSuccess)
             {
+                ViewBag.Error = result.Message;
                 return View(model);
             }
 
-            var existingUser = await _userManager.FindByEmailAsync(model.Email);
-            if (existingUser != null)
-            {
-                ViewBag.Error = "Bu email artıq qeydiyyatdan keçib.";
-                return View(model);
-            }
-
-            var passwordValidator = HttpContext.RequestServices.GetRequiredService<IPasswordValidator<ApplicationUser>>();
-            var fakeUser = new ApplicationUser { UserName = model.Email, Email = model.Email };
-            var passwordCheck = await passwordValidator.ValidateAsync(_userManager, fakeUser, model.Password);
-
-            if (!passwordCheck.Succeeded)
-            {
-                foreach (var error in passwordCheck.Errors)
-                {
-                    ModelState.AddModelError("Password", error.Description);
-                }
-                return View(model);
-            }
-
-            string accountNumber;
-            do
-            {
-                accountNumber = AccountNumberHelper.GenerateAccountNumber();
-            }
-            while (await _userManager.Users.AnyAsync(u => u.AccountNumber == accountNumber));
-
-            var user = new ApplicationUser
-            {
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                Address = model.Address,
-                Age = model.Age,
-                Balance = 0,
-                Email = model.Email,
-                UserName = model.Email,
-                AccountNumber = accountNumber,
-                EmailConfirmed = true,
-                AvatarUrl = model.AvatarUrl
-            };
-
-            var result = await _userManager.CreateAsync(user, model.Password);
-
-            if (result.Succeeded)
-            {
-                await _userManager.AddToRoleAsync(user, "User");
-                TempData["Success"] = "Qeydiyyat uğurla tamamlandı.";
-                return RedirectToAction("Login");
-            }
-
-            foreach (var error in result.Errors)
-            {
-                ModelState.AddModelError(string.Empty, error.Description);
-            }
-
-            return View(model);
+            TempData["Success"] = result.Message;
+            return RedirectToAction("Login");
         }
     }
 }

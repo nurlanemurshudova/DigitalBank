@@ -8,6 +8,7 @@ using Entities.Concrete.TableModels.Membership;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -19,10 +20,21 @@ namespace DigitalBankUI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddDbContext<ApplicationDbContext>()
-                .AddIdentity<ApplicationUser, ApplicationRole>()
-                .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+
+            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+
+            builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
+
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+
+            .AddDefaultTokenProviders();
+            //builder.Services.AddDbContext<ApplicationDbContext>()
+            //    .AddIdentity<ApplicationUser, ApplicationRole>()
+            //    .AddEntityFrameworkStores<ApplicationDbContext>()
+            //    .AddDefaultTokenProviders();
 
             builder.Services.Configure<IdentityOptions>(options =>
             {
@@ -120,8 +132,11 @@ namespace DigitalBankUI
             builder.Services.AddScoped<ITransactionService, TransactionManager>();
             builder.Services.AddScoped<IMessageService, MessageManager>();
             builder.Services.AddScoped<INotificationService, NotificationManager>();
+            builder.Services.AddScoped<IUserProfileService, UserProfileManager>();
+            builder.Services.AddScoped<IAccountService, AccountManager>();
+            builder.Services.AddScoped<IUserProfileService, UserProfileManager>();
 
-            
+
 
             var app = builder.Build();
 

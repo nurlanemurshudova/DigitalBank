@@ -1,4 +1,5 @@
-﻿using Entities.Concrete.Dtos;
+﻿using Business.Abstract;
+using Entities.Concrete.Dtos;
 using Entities.Concrete.TableModels.Membership;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -11,15 +12,19 @@ namespace DigitalBankUI.Controllers
     public class SettingsController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IUserProfileService _profileService;
         private readonly IWebHostEnvironment _environment;
 
         public SettingsController(
             UserManager<ApplicationUser> userManager,
+            IUserProfileService profileService,
             IWebHostEnvironment environment)
         {
             _userManager = userManager;
+            _profileService = profileService;
             _environment = environment;
         }
+
 
         public async Task<IActionResult> Index()
         {
@@ -32,6 +37,7 @@ namespace DigitalBankUI.Controllers
             return View(user);
         }
 
+
         [HttpPost]
         public async Task<IActionResult> UpdateProfile(UpdateProfileDto model)
         {
@@ -42,32 +48,11 @@ namespace DigitalBankUI.Controllers
             }
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var user = await _userManager.FindByIdAsync(userId.ToString());
-
-            if (user == null)
-            {
-                TempData["Error"] = "İstifadəçi tapılmadı";
-                return RedirectToAction("Index");
-            }
 
 
-            user.FirstName = model.FirstName;
-            user.LastName = model.LastName;
-            user.Address = model.Address;
-            user.Age = model.Age;
-            user.UpdatedDate = DateTime.Now;
+            var result = await _profileService.UpdateProfileAsync(userId, model);
 
-            var result = await _userManager.UpdateAsync(user);
-
-            if (result.Succeeded)
-            {
-                TempData["Success"] = "Profil uğurla yeniləndi";
-            }
-            else
-            {
-                TempData["Error"] = "Profil yenilənmədi: " + string.Join(", ", result.Errors.Select(e => e.Description));
-            }
-
+            TempData[result.IsSuccess ? "Success" : "Error"] = result.Message;
             return RedirectToAction("Index");
         }
 
@@ -75,80 +60,27 @@ namespace DigitalBankUI.Controllers
         [HttpPost]
         public async Task<IActionResult> UploadAvatar(IFormFile avatar)
         {
-            if (avatar == null || avatar.Length == 0)
-            {
-                TempData["Error"] = "Şəkil seçilməyib";
-                return RedirectToAction("Index");
-            }
-
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
-            var extension = Path.GetExtension(avatar.FileName).ToLower();
-
-            if (!allowedExtensions.Contains(extension))
-            {
-                TempData["Error"] = "Yalnız JPG, PNG və GIF formatları qəbul edilir";
-                return RedirectToAction("Index");
-            }
-
-            if (avatar.Length > 5 * 1024 * 1024)
-            {
-                TempData["Error"] = "Şəkil ölçüsü 5MB-dan çox ola bilməz";
-                return RedirectToAction("Index");
-            }
-
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var user = await _userManager.FindByIdAsync(userId.ToString());
 
-            if (user == null)
-            {
-                TempData["Error"] = "İstifadəçi tapılmadı";
-                return RedirectToAction("Index");
-            }
 
-            try
-            {
-                var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "avatars");
-                if (!Directory.Exists(uploadsFolder))
-                {
-                    Directory.CreateDirectory(uploadsFolder);
-                }
+            var result = await _profileService.UploadAvatarAsync(
+                userId,
+                avatar,
+                _environment.WebRootPath
+            );
 
-                if (!string.IsNullOrEmpty(user.AvatarUrl))
-                {
-                    var oldAvatarPath = Path.Combine(_environment.WebRootPath, user.AvatarUrl.TrimStart('/'));
-                    if (System.IO.File.Exists(oldAvatarPath))
-                    {
-                        System.IO.File.Delete(oldAvatarPath);
-                    }
-                }
+            TempData[result.IsSuccess ? "Success" : "Error"] = result.Message;
+            return RedirectToAction("Index");
+        }
 
-                var fileName = $"{userId}_{Guid.NewGuid()}{extension}";
-                var filePath = Path.Combine(uploadsFolder, fileName);
+        [HttpPost]
+        public async Task<IActionResult> DeleteAvatar()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await avatar.CopyToAsync(stream);
-                }
+            var result = await _profileService.DeleteAvatarAsync(userId, _environment.WebRootPath);
 
-                user.AvatarUrl = $"/uploads/avatars/{fileName}";
-                user.UpdatedDate = DateTime.Now;
-
-                var result = await _userManager.UpdateAsync(user);
-
-                if (result.Succeeded)
-                {
-                    TempData["Success"] = "Şəkil uğurla yükləndi";
-                }
-                else
-                {
-                    TempData["Error"] = "Şəkil yüklənmədi";
-                }
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Xəta: {ex.Message}";
-            }
-
+            TempData[result.IsSuccess ? "Success" : "Error"] = result.Message;
             return RedirectToAction("Index");
         }
 
@@ -157,7 +89,6 @@ namespace DigitalBankUI.Controllers
         {
             return View();
         }
-
 
         [HttpPost]
         public async Task<IActionResult> ChangePassword(ChangePasswordDto model)
@@ -174,64 +105,21 @@ namespace DigitalBankUI.Controllers
             }
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var user = await _userManager.FindByIdAsync(userId.ToString());
 
-            if (user == null)
+            var result = await _profileService.ChangePasswordAsync(
+                userId,
+                model.CurrentPassword,
+                model.NewPassword
+            );
+
+            if (result.IsSuccess)
             {
-                TempData["Error"] = "İstifadəçi tapılmadı";
+                TempData["Success"] = result.Message;
                 return RedirectToAction("Index");
             }
 
-            var result = await _userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
-
-            if (result.Succeeded)
-            {
-                TempData["Success"] = "Şifrə uğurla dəyişdirildi";
-                return RedirectToAction("Index");
-            }
-            else
-            {
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError("", error.Description);
-                }
-                return View(model);
-            }
-        }
-
-
-        [HttpPost]
-        public async Task<IActionResult> DeleteAvatar()
-        {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            var user = await _userManager.FindByIdAsync(userId.ToString());
-
-            if (user == null)
-            {
-                TempData["Error"] = "İstifadəçi tapılmadı";
-                return RedirectToAction("Index");
-            }
-
-            if (!string.IsNullOrEmpty(user.AvatarUrl))
-            {
-                var avatarPath = Path.Combine(_environment.WebRootPath, user.AvatarUrl.TrimStart('/'));
-                if (System.IO.File.Exists(avatarPath))
-                {
-                    System.IO.File.Delete(avatarPath);
-                }
-
-                user.AvatarUrl = null;
-                user.UpdatedDate = DateTime.Now;
-
-                var result = await _userManager.UpdateAsync(user);
-
-                if (result.Succeeded)
-                {
-                    TempData["Success"] = "Şəkil silindi";
-                }
-            }
-
-            return RedirectToAction("Index");
+            ModelState.AddModelError("", result.Message);
+            return View(model);
         }
     }
 }

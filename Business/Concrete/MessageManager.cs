@@ -5,6 +5,7 @@ using Core.Results.Concrete;
 using DataAccess.UnitOfWork;
 using Entities.Concrete.TableModels;
 using Entities.Concrete.TableModels.Membership;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -17,10 +18,12 @@ namespace Business.Concrete
     public class MessageManager : IMessageService
     {
         private readonly IUnitOfWork _uow;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public MessageManager(IUnitOfWork uow)
+        public MessageManager(IUnitOfWork uow, UserManager<ApplicationUser> userManager)
         {
             _uow = uow;
+            _userManager = userManager;
         }
 
         public async Task<IResult> DeleteConversationAsync(int currentUserId, int otherUserId)
@@ -155,6 +158,32 @@ namespace Business.Concrete
             await _uow.CommitAsync();
 
             return new SuccessResult(UIMessages.UPDATE_MESSAGE);
+        }
+
+
+        public async Task<IDataResult<List<ApplicationUser>>> GetAvailableUsersAsync(int currentUserId)
+        {
+            try
+            {
+                var allUsersInUserRole = await _userManager.GetUsersInRoleAsync("User");
+
+                var users = allUsersInUserRole
+                    .Where(u => u.Id != currentUserId)
+                    .OrderBy(u => u.FirstName)
+                    .ToList();
+
+                return new SuccessDataResult<List<ApplicationUser>>(
+                    users,
+                    $"{users.Count} istifadəçi tapıldı"
+                );
+            }
+            catch (Exception ex)
+            {
+                return new ErrorDataResult<List<ApplicationUser>>(
+                    new List<ApplicationUser>(),
+                    $"İstifadəçilər yüklənmədi: {ex.Message}"
+                );
+            }
         }
     }
 }
